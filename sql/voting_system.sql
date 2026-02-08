@@ -1,0 +1,3 @@
+-- ============================================
+-- SECURE ONLINE VOTING SYSTEM - DATABASE SCHEMA
+-- 

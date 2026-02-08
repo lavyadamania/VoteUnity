@@ -1,0 +1,34 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Environment files
+.env
+.env.local
+*.env
+
+# Uploads (user data)
+/uploads/faces/*.jpg
+/uploads/admin_*.jpg
+/uploads/temp_*.jpg
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+error_log
+
+# Local config files
+Fix_*.bat
+
+# Keep these folders
+!uploads/.gitkeep
