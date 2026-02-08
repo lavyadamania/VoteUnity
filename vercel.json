@@ -1,11 +1,18 @@
 {
     "version": 2,
     "functions": {
-        "api/*.php": {
+        "api/index.php": {
+            "runtime": "vercel-php@0.7.2"
+        },
+        "api/debug.php": {
             "runtime": "vercel-php@0.7.2"
         }
     },
     "routes": [
+        {
+            "src": "/api/debug",
+            "dest": "/api/debug.php"
+        },
         {
             "src": "/css/(.*)",
             "dest": "/css/$1"
