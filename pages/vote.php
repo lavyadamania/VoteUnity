@@ -4,7 +4,7 @@ require_once '../includes/header.php';
 // Require login
 if (!isLoggedIn()) {
     setFlashMessage('error', 'Please login to access the voting page');
-    redirect('/voting/pages/login.php');
+    redirect(BASE_URL . '/pages/login.php');
 }
 
 // Get user info
@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_face'])) {
         setFlashMessage('error', 'Please capture your face for verification.');
     }
 
-    redirect('/voting/pages/vote.php');
+    redirect(BASE_URL . '/pages/vote.php');
 }
 
 // Handle vote submission
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
     // Check face verification
     if (!$faceVerified) {
         setFlashMessage('error', 'You must verify your face before voting.');
-        redirect('/voting/pages/vote.php');
+        redirect(BASE_URL . '/pages/vote.php');
     }
 
     $candidateId = intval($_POST['candidate_id'] ?? 0);
@@ -105,9 +105,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
                 // Insert vote
                 $stmt = $pdo->prepare("
                     INSERT INTO votes (user_id, candidate_id, vote_hash, previous_hash, timestamp) 
-                    VALUES (?, ?, ?, ?, FROM_UNIXTIME(?))
+                    VALUES (?, ?, ?, ?, ?)
                 ");
-                $stmt->execute([$_SESSION['user_id'], $candidateId, $voteHash, $previousHash, $timestamp]);
+                $stmt->execute([$_SESSION['user_id'], $candidateId, $voteHash, $previousHash, date('Y-m-d H:i:s', $timestamp)]);
 
                 // Update user's voted flag
                 $stmt = $pdo->prepare("UPDATE users SET has_voted = 1 WHERE id = ?");
@@ -131,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
     }
 
     // Refresh page to show updated state
-    redirect('/voting/pages/vote.php');
+    redirect(BASE_URL . '/pages/vote.php');
 }
 ?>
 

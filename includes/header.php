@@ -13,7 +13,7 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="VoteUnity - Secure Online Voting System with Face Verification">
     <title>VoteUnity - Secure Online Voting</title>
-    <link rel="stylesheet" href="/voting/css/style.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/style.css?v=<?= time() ?>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="icon"
@@ -23,20 +23,21 @@ $currentPage = basename($_SERVER['PHP_SELF'], '.php');
 <body>
     <nav class="navbar">
         <div class="nav-brand">
-            <a href="/voting/">
+            <a href="<?= BASE_URL ?>/">
                 <span class="nav-icon">🗳️</span>
                 <span class="nav-title">VoteUnity</span>
             </a>
         </div>
         <div class="nav-links">
             <?php if (isLoggedIn()): ?>
-                <a href="/voting/pages/vote.php" class="<?= $currentPage === 'vote' ? 'active' : '' ?>">🗳️ Vote</a>
-                <a href="/voting/pages/logout.php">🚪 Logout</a>
+                <a href="<?= BASE_URL ?>/pages/vote.php" class="<?= $currentPage === 'vote' ? 'active' : '' ?>">🗳️ Vote</a>
+                <a href="<?= BASE_URL ?>/pages/logout.php">🚪 Logout</a>
             <?php else: ?>
-                <a href="/voting/pages/login.php" class="<?= $currentPage === 'login' ? 'active' : '' ?>">🔑 Login</a>
-                <a href="/voting/pages/register.php" class="<?= $currentPage === 'register' ? 'active' : '' ?>">📝
+                <a href="<?= BASE_URL ?>/pages/login.php" class="<?= $currentPage === 'login' ? 'active' : '' ?>">🔑
+                    Login</a>
+                <a href="<?= BASE_URL ?>/pages/register.php" class="<?= $currentPage === 'register' ? 'active' : '' ?>">📝
                     Register</a>
-                <a href="/voting/pages/admin/login.php" style="color: #f6ad55;">🔐 Admin</a>
+                <a href="<?= BASE_URL ?>/pages/admin/login.php" style="color: #f6ad55;">🔐 Admin</a>
             <?php endif; ?>
         </div>
     </nav>

@@ -5,7 +5,7 @@ require_once '../../includes/functions.php';
 
 // Require admin login
 if (!isAdminLoggedIn()) {
-    redirect('/voting/pages/admin/login.php');
+    redirect(BASE_URL . '/pages/admin/login.php');
 }
 
 // Get statistics
@@ -33,7 +33,7 @@ $chainValid = verifyHashChain($pdo);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - VoteUnity</title>
-    <link rel="stylesheet" href="/voting/css/style.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
@@ -193,4 +193,4 @@ $chainValid = verifyHashChain($pdo);
 
     <footer class="footer">
         <div class="footer-content">
-            <p>🔒 VoteUnity Admin Panel - 
+            <p>🔒 VoteUnity Admin Panel -

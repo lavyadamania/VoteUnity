@@ -9,7 +9,7 @@ require_once '../../includes/functions.php';
 
 // Check if admin has pending location requirement
 if (!isset($_SESSION['admin_requires_location']) || !isset($_SESSION['admin_pending_login'])) {
-    redirect('/voting/pages/admin/login.php');
+    redirect(BASE_URL . '/pages/admin/login.php');
 }
 
 $adminId = $_SESSION['admin_pending_login'];
@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             unset($_SESSION['admin_pending_login']);
             unset($_SESSION['admin_pending_username']);
 
-            redirect('/voting/pages/admin/dashboard.php');
+            redirect(BASE_URL . '/pages/admin/dashboard.php');
         } catch (PDOException $e) {
             $errors[] = 'Failed to save location: ' . $e->getMessage();
         }
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Location Verification - VoteUnity</title>
-    <link rel="stylesheet" href="/voting/css/style.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         .location-card {
@@ -156,7 +156,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button onclick="retryLocation()" class="btn btn-secondary">
                     🔄 Retry Location
                 </button>
-                <a href="/voting/pages/admin/login.php?cancel=1" class="btn btn-secondary" style="margin-top: 0.5rem;">
+                <a href="<?= BASE_URL ?>/pages/admin/login.php?cancel=1" class="btn btn-secondary"
+                    style="margin-top: 0.5rem;">
                     ← Back to Login
                 </a>
             </div>
@@ -170,55 +171,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <footer class="footer">
         <div class="footer-content">
-            <p>🔒 VoteUnity Admin Panel - "spinner"></div><p>Getting your location...</p>';
-            statusDiv.className = 'location-status status-waiting';
+            <p>🔒 VoteUnity Admin Panel - "spinner">
+        </div>
+        <p>Getting your location...</p>';
+        statusDiv.className = 'location-status status-waiting';
 
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    document.getElementById('lat').value = position.coords.latitude;
-                    document.getElementById('lng').value = position.coords.longitude;
-                    document.getElementById('acc').value = position.coords.accuracy;
+        navigator.geolocation.getCurrentPosition(
+        (position) => {
+        document.getElementById('lat').value = position.coords.latitude;
+        document.getElementById('lng').value = position.coords.longitude;
+        document.getElementById('acc').value = position.coords.accuracy;
 
-                    statusDiv.innerHTML = `
-                        <p style="color: #10b981; font-size: 1.25rem;">✅ Location captured!</p>
-                        <p style="color: var(--gray);">
-                            Lat: ${position.coords.latitude.toFixed(4)}<br>
-                            Lng: ${position.coords.longitude.toFixed(4)}<br>
-                            Accuracy: ±${Math.round(position.coords.accuracy)}m
-                        </p>
-                    `;
-                    statusDiv.className = 'location-status status-success';
-                    form.style.display = 'block';
-                    errorActions.style.display = 'none';
-                },
-                (error) => {
-                    let msg = 'Location access denied';
-                    if (error.code === 2) msg = 'Location unavailable';
-                    if (error.code === 3) msg = 'Location request timed out';
-                    showError(msg);
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 15000,
-                    maximumAge: 0
-                }
-            );
+        statusDiv.innerHTML = `
+        <p style="color: #10b981; font-size: 1.25rem;">✅ Location captured!</p>
+        <p style="color: var(--gray);">
+            Lat: ${position.coords.latitude.toFixed(4)}<br>
+            Lng: ${position.coords.longitude.toFixed(4)}<br>
+            Accuracy: ±${Math.round(position.coords.accuracy)}m
+        </p>
+        `;
+        statusDiv.className = 'location-status status-success';
+        form.style.display = 'block';
+        errorActions.style.display = 'none';
+        },
+        (error) => {
+        let msg = 'Location access denied';
+        if (error.code === 2) msg = 'Location unavailable';
+        if (error.code === 3) msg = 'Location request timed out';
+        showError(msg);
+        },
+        {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+        }
+        );
         }
 
         function showError(message) {
-            statusDiv.innerHTML = `<p style="color: #ef4444;">❌ ${message}</p>`;
-            statusDiv.className = 'location-status status-error';
-            errorActions.style.display = 'block';
-            form.style.display = 'none';
+        statusDiv.innerHTML = `<p style="color: #ef4444;">❌ ${message}</p>`;
+        statusDiv.className = 'location-status status-error';
+        errorActions.style.display = 'block';
+        form.style.display = 'none';
         }
 
         function retryLocation() {
-            getLocation();
+        getLocation();
         }
 
         // Start getting location
         getLocation();
-    </script>
+        </script>
 </body>
 
 </html>

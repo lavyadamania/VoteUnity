@@ -3,7 +3,7 @@ require_once '../includes/header.php';
 
 // Redirect if already logged in
 if (isLoggedIn()) {
-    redirect('/voting/pages/vote.php');
+    redirect(BASE_URL . '/pages/vote.php');
 }
 
 $errors = [];
@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $stmt->execute([$name, $email, $hashedPassword, $aadhaar, $faceImagePath]);
             setFlashMessage('success', 'Registration successful! Please login to continue.');
-            redirect('/voting/pages/login.php');
+            redirect(BASE_URL . '/pages/login.php');
         } catch (PDOException $e) {
             $errors[] = 'Registration failed. Please try again.';
         }

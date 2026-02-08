@@ -9,7 +9,7 @@ require_once '../../includes/functions.php';
 
 // Check admin login
 if (!isAdminLoggedIn()) {
-    redirect('/voting/pages/admin/login.php');
+    redirect(BASE_URL . '/pages/admin/login.php');
 }
 
 // Get current admin info
@@ -43,7 +43,7 @@ $locations = $pdo->query("
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Locations - VoteUnity</title>
-    <link rel="stylesheet" href="/voting/css/style.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -178,4 +178,4 @@ $locations = $pdo->query("
 
     <footer class="footer">
         <div class="footer-content">
-            <p>🔒 VoteUnity Admin Panel - 
+            <p>🔒 VoteUnity Admin Panel -

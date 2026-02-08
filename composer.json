@@ -1,0 +1,10 @@
+{
+    "name": "voteunity/voting-system",
+    "description": "Secure Online Voting System",
+    "require": {
+        "php": "^8.0",
+        "ext-pdo": "*",
+        "ext-pdo_mysql": "*",
+        "ext-gd": "*"
+    }
+}

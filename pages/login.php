@@ -3,7 +3,7 @@ require_once '../includes/header.php';
 
 // Redirect if already logged in
 if (isLoggedIn()) {
-    redirect('/voting/pages/vote.php');
+    redirect(BASE_URL . '/pages/vote.php');
 }
 
 $errors = [];
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['has_voted'] = $user['has_voted'];
 
                 setFlashMessage('success', 'Welcome back, ' . $user['name'] . '!');
-                redirect('/voting/pages/vote.php');
+                redirect(BASE_URL . '/pages/vote.php');
             } else {
                 $errors[] = 'Face verification failed';
             }

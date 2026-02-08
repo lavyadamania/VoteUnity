@@ -10,7 +10,7 @@
     </div>
 </footer>
 
-<script src="/voting/js/main.js?v=<?= time() ?>"></script>
+<script src="<?= BASE_URL ?>/js/main.js?v=<?= time() ?>"></script>
 </body>
 
 </html>

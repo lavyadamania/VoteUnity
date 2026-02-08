@@ -5,7 +5,7 @@ require_once '../../includes/functions.php';
 
 // Redirect if already logged in
 if (isAdminLoggedIn()) {
-    redirect('/voting/pages/admin/dashboard.php');
+    redirect(BASE_URL . '/pages/admin/dashboard.php');
 }
 
 $errors = [];
@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_step']) && $_PO
                     unset($_SESSION['pending_admin_id']);
 
                     // Go to location capture page
-                    redirect('/voting/pages/admin/capture_location.php');
+                    redirect(BASE_URL . '/pages/admin/capture_location.php');
                 } else {
                     // Super admin - login directly without location
                     $_SESSION['admin_id'] = $admin['id'];
@@ -125,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_step']) && $_PO
                     unset($_SESSION['admin_login_step']);
                     unset($_SESSION['pending_admin_id']);
 
-                    redirect('/voting/pages/admin/dashboard.php');
+                    redirect(BASE_URL . '/pages/admin/dashboard.php');
                 }
             } else {
                 $errors[] = 'Face verification failed. Please try again.';
@@ -138,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_step']) && $_PO
 if (isset($_GET['cancel'])) {
     unset($_SESSION['admin_login_step']);
     unset($_SESSION['pending_admin_id']);
-    redirect('/voting/pages/admin/login.php');
+    redirect(BASE_URL . '/pages/admin/login.php');
 }
 ?>
 <!DOCTYPE html>
@@ -148,7 +148,7 @@ if (isset($_GET['cancel'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login - VoteUnity</title>
-    <link rel="stylesheet" href="/voting/css/style.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
@@ -159,7 +159,7 @@ if (isset($_GET['cancel'])) {
             <span class="nav-title">VoteUnity Admin</span>
         </div>
         <div class="nav-links">
-            <a href="/voting/">← Back to Main Site</a>
+            <a href="<?= BASE_URL ?>/">← Back to Main Site</a>
         </div>
     </nav>
 
@@ -317,4 +317,4 @@ if (isset($_GET['cancel'])) {
 
     <footer class="footer">
         <div class="footer-content">
-            <p>🔒 VoteUnity Admin Panel - 
+            <p>🔒 VoteUnity Admin Panel -

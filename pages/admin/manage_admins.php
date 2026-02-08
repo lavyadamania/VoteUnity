@@ -9,7 +9,7 @@ require_once '../../includes/functions.php';
 
 // Check admin login
 if (!isAdminLoggedIn()) {
-    redirect('/voting/pages/admin/login.php');
+    redirect(BASE_URL . '/pages/admin/login.php');
 }
 
 // Get current admin info
@@ -22,7 +22,7 @@ $canManage = $currentAdmin['is_super_admin'] || $currentAdmin['can_manage_admins
 
 if (!$canManage) {
     setFlashMessage('error', 'You do not have permission to manage admins.');
-    redirect('/voting/pages/admin/dashboard.php');
+    redirect(BASE_URL . '/pages/admin/dashboard.php');
 }
 
 $message = '';
@@ -95,7 +95,7 @@ foreach ($admins as $admin) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manage Admins - VoteUnity</title>
-    <link rel="stylesheet" href="/voting/css/style.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         .admin-card {
@@ -324,7 +324,7 @@ foreach ($admins as $admin) {
             <p style="color: var(--gray);">Share this link with new admins:</p>
             <code
                 style="background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 6px; display: inline-block;">
-                <?= 'http://' . $_SERVER['HTTP_HOST'] . '/voting/pages/admin/register.php' ?>
+                <?= 'http://' . $_SERVER['HTTP_HOST'] . BASE_URL . '/pages/admin/register.php' ?>
             </code>
         </div>
     </main>
