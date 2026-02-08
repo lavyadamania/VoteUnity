@@ -42,16 +42,16 @@ try {
         $dsn .= ";charset=utf8mb4";
     }
 
-    $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+    // PDO options
+    $options = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES => false
-    ]);
+    ];
+
+    $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
 } catch (PDOException $e) {
-    // Show friendly error in production, detailed in development
-    if (getenv('VERCEL') || getenv('RAILWAY_ENVIRONMENT')) {
-        die("Database connection failed. Please check your configuration.");
-    } else {
-        die("Database connection failed: " . $e->getMessage());
-    }
+    // Temporary: Show detailed error for debugging
+    $debug = "Connection: $dbConnection | Host: " . DB_HOST . " | Port: " . DB_PORT . " | DB: " . DB_NAME . " | User: " . DB_USER;
+    die("Database connection failed. Debug: $debug | Error: " . $e->getMessage());
 }
