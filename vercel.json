@@ -1,17 +1,23 @@
 {
     "version": 2,
     "functions": {
-        "**/*.php": {
-            "runtime": "vercel-php@0.6.0"
+        "*.php": {
+            "runtime": "vercel-php@0.7.2"
+        },
+        "pages/*.php": {
+            "runtime": "vercel-php@0.7.2"
+        },
+        "pages/admin/*.php": {
+            "runtime": "vercel-php@0.7.2"
         }
     },
     "routes": [
         {
+            "handle": "filesystem"
+        },
+        {
             "src": "/(.*)",
-            "dest": "/$1"
+            "dest": "/index.php"
         }
-    ],
-    "env": {
-        "DB_CONNECTION": "pgsql"
-    }
+    ]
 }
