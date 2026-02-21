@@ -12,11 +12,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Detect base URL for dynamic paths
-if (getenv('VERCEL_URL')) {
-    // On Vercel
-    define('BASE_URL', 'https://' . getenv('VERCEL_URL'));
-} elseif (getenv('VERCEL')) {
-    // On Vercel without VERCEL_URL set
+if (getenv('VERCEL') || getenv('VERCEL_URL')) {
+    // On Vercel - use relative paths
     define('BASE_URL', '');
 } else {
     // Local development

@@ -13,10 +13,10 @@ require_once 'includes/header.php';
 
         <?php if (!isLoggedIn()): ?>
             <div class="hero-buttons">
-                <a href="pages/register.php" class="btn btn-primary">
+                <a href="<?= BASE_URL ?>/pages/register.php" class="btn btn-primary">
                     <span>🗳️</span> Get Started
                 </a>
-                <a href="pages/login.php" class="btn btn-outline">
+                <a href="<?= BASE_URL ?>/pages/login.php" class="btn btn-outline">
                     <span>→</span> Sign In
                 </a>
             </div>
