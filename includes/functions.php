@@ -1,7 +1,6 @@
 <?php
 /**
- * Reusable Functions
- * VoteUnity - Secure Online Voting System
+ * Core Helper Functions
  */
 
 /**
@@ -14,8 +13,7 @@ function redirect($url)
 }
 
 /**
- * Guard: if $pdo is null, output a styled DB error page and exit.
- * Call requireDb($pdo, $db_error) at the top of any admin page.
+ * Database presence check
  */
 function requireDb($pdo, $db_error = null)
 {
@@ -138,7 +136,7 @@ function getLastVoteHash($pdo)
 }
 
 /**
- * Generate a hash for a vote (blockchain-style)
+ * Blockchain-style vote hashing
  */
 function generateVoteHash($userId, $candidateId, $timestamp, $previousHash)
 {
@@ -224,31 +222,42 @@ function validateEmail($email)
 }
 
 /**
- * Compare faces using PHP GD library
+ * Biometric similarity check
  */
-function compareFaces($image1Path, $image2Path)
+function compareFaces($img1Input, $img2Input)
 {
     if (!extension_loaded('gd')) {
         return ['match' => true, 'score' => 0.85, 'method' => 'fallback'];
     }
 
-    if (!file_exists($image1Path) || !file_exists($image2Path)) {
-        return ['match' => false, 'score' => 0, 'error' => 'Image not found'];
+    $img1 = null;
+    $img2 = null;
+
+    // Load Image 1
+    if (str_starts_with($img1Input, 'data:')) {
+        $data = explode(',', $img1Input)[1];
+        $img1 = @imagecreatefromstring(base64_decode($data));
+    } elseif (is_string($img1Input) && file_exists($img1Input)) {
+        $img1 = @imagecreatefromjpeg($img1Input);
+        if (!$img1)
+            $img1 = @imagecreatefrompng($img1Input);
     }
 
-    $img1 = @imagecreatefromjpeg($image1Path);
-    $img2 = @imagecreatefromjpeg($image2Path);
-
-    if (!$img1)
-        $img1 = @imagecreatefrompng($image1Path);
-    if (!$img2)
-        $img2 = @imagecreatefrompng($image2Path);
+    // Load Image 2
+    if (str_starts_with($img2Input, 'data:')) {
+        $data = explode(',', $img2Input)[1];
+        $img2 = @imagecreatefromstring(base64_decode($data));
+    } elseif (is_string($img2Input) && file_exists($img2Input)) {
+        $img2 = @imagecreatefromjpeg($img2Input);
+        if (!$img2)
+            $img2 = @imagecreatefrompng($img2Input);
+    }
 
     if (!$img1 || !$img2) {
-        return ['match' => true, 'score' => 0.75, 'method' => 'fallback'];
+        return ['match' => false, 'score' => 0, 'error' => 'Could not load images for comparison'];
     }
 
-    $size = 32;
+    $size = 64; // Increased resolution
     $thumb1 = imagecreatetruecolor($size, $size);
     $thumb2 = imagecreatetruecolor($size, $size);
 
@@ -257,6 +266,32 @@ function compareFaces($image1Path, $image2Path)
 
     imagefilter($thumb1, IMG_FILTER_GRAYSCALE);
     imagefilter($thumb2, IMG_FILTER_GRAYSCALE);
+
+    // Contrast Normalization (Min-Max Scaling)
+    $normalize = function ($im, $s) {
+        $min = 255;
+        $max = 0;
+        for ($x = 0; $x < $s; $x++) {
+            for ($y = 0; $y < $s; $y++) {
+                $gray = imagecolorat($im, $x, $y) & 0xFF;
+                if ($gray < $min)
+                    $min = $gray;
+                if ($gray > $max)
+                    $max = $gray;
+            }
+        }
+        $range = max(1, $max - $min);
+        for ($x = 0; $x < $s; $x++) {
+            for ($y = 0; $y < $s; $y++) {
+                $gray = imagecolorat($im, $x, $y) & 0xFF;
+                $newG = (int) (($gray - $min) / $range * 255);
+                imagesetpixel($im, $x, $y, imagecolorallocate($im, $newG, $newG, $newG));
+            }
+        }
+    };
+
+    $normalize($thumb1, $size);
+    $normalize($thumb2, $size);
 
     $diff = 0;
     $totalPixels = $size * $size;
@@ -280,7 +315,8 @@ function compareFaces($image1Path, $image2Path)
 
     $maxDiff = 255 * $totalPixels;
     $similarity = 1 - ($diff / $maxDiff);
-    $similarity = pow($similarity, 0.5);
+
+    // Strict mode: Removed boost
 
     $threshold = 0.60;
     $isMatch = $similarity >= $threshold;
@@ -289,7 +325,7 @@ function compareFaces($image1Path, $image2Path)
         'match' => $isMatch,
         'score' => round($similarity, 4),
         'threshold' => $threshold,
-        'method' => 'php_gd'
+        'method' => 'gd_strict'
     ];
 }
 

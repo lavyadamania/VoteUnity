@@ -1,48 +1,43 @@
 <?php
 /**
- * Database Configuration
- * VoteUnity - Secure Online Voting System
- * 
- * Supports local (XAMPP/MySQL) and cloud (Vercel/Supabase PostgreSQL) deployment
- */
+* Database Connection Setup
+*/
 
-// Global Output Buffering - Fixes "Headers already sent" errors project-wide
-@ob_start();
+@ob_start(); // Buffer output to prevent header issues
 
 // Detect deployment environment
 $isVercel = (bool) (getenv('VERCEL') || getenv('VERCEL_URL'));
 
-// Configure session for Vercel (serverless needs /tmp)
-// Must happen BEFORE session_start()
+// Configure session for Vercel environment
 if ($isVercel && session_status() === PHP_SESSION_NONE) {
-    @ini_set('session.save_path', '/tmp');
-    @ini_set('session.gc_maxlifetime', 3600);
+@ini_set('session.save_path', '/tmp');
+@ini_set('session.gc_maxlifetime', 3600);
 }
 
 // Start session if not started
 if (session_status() === PHP_SESSION_NONE) {
-    @session_start();
+@session_start();
 }
 
 // Detect base URL for dynamic paths
 if (getenv('VERCEL') || getenv('VERCEL_URL')) {
-    // On Vercel - use relative paths
-    define('BASE_URL', '');
+// On Vercel - use relative paths
+define('BASE_URL', '');
 } else {
-    // Local development
-    define('BASE_URL', '/voting');
+// Local development
+define('BASE_URL', '/voting');
 }
 
-// Auto-detect pgsql if Neon PG* env vars are set
-// Supports both DB_* (custom) and PG* (Neon native) variable names
+// Setup connection based on environment variables
 $dbConnection = trim(
-    getenv('DB_CONNECTION') ?:
-    (getenv('PGHOST') ? 'pgsql' : 'mysql')
+getenv('DB_CONNECTION') ?:
+(getenv('PGHOST') ? 'pgsql' : 'mysql')
 );
 
 // Database credentials — try DB_* first, then PG* (Neon native), then local defaults
 define('DB_HOST', trim(getenv('DB_HOST') ?: getenv('PGHOST') ?: getenv('MYSQL_HOST') ?: 'localhost'));
-define('DB_PORT', trim(getenv('DB_PORT') ?: getenv('PGPORT') ?: getenv('MYSQL_PORT') ?: ($dbConnection === 'pgsql' ? '5432' : '3307')));
+define('DB_PORT', trim(getenv('DB_PORT') ?: getenv('PGPORT') ?: getenv('MYSQL_PORT') ?: ($dbConnection === 'pgsql' ?
+'5432' : '3307')));
 define('DB_NAME', trim(getenv('DB_NAME') ?: getenv('PGDATABASE') ?: getenv('MYSQL_DATABASE') ?: 'voting_system'));
 define('DB_USER', trim(getenv('DB_USER') ?: getenv('PGUSER') ?: getenv('MYSQL_USER') ?: 'root'));
 define('DB_PASS', trim(getenv('DB_PASS') ?: getenv('PGPASSWORD') ?: getenv('MYSQL_PASSWORD') ?: ''));
@@ -51,32 +46,32 @@ define('DB_PASS', trim(getenv('DB_PASS') ?: getenv('PGPASSWORD') ?: getenv('MYSQ
 $pdo = null;
 $db_error = null;
 
-// Attempt connection if DB is configured (PG* or DB_* env vars present) or if local
+// Attempt to establish connection
 $hasDbConfig = (bool) (getenv('DB_HOST') || getenv('PGHOST') || getenv('MYSQL_HOST'));
 
 if (!$isVercel || $hasDbConfig) {
 
-    try {
-        $dsn = $dbConnection . ":host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME;
+try {
+$dsn = $dbConnection . ":host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME;
 
-        // Add charset for MySQL, SSL for PostgreSQL (required by Neon)
-        if ($dbConnection === 'mysql') {
-            $dsn .= ";charset=utf8mb4";
-        } elseif ($dbConnection === 'pgsql') {
-            $dsn .= ";sslmode=require";
-        }
+// Add charset for MySQL, SSL for PostgreSQL (required by Neon)
+if ($dbConnection === 'mysql') {
+$dsn .= ";charset=utf8mb4";
+} elseif ($dbConnection === 'pgsql') {
+$dsn .= ";sslmode=require";
+}
 
-        // PDO options — connect_timeout avoids hanging on unreachable hosts
-        $options = [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => true, // Essential for Neon/Pgbouncer compatibility
-            PDO::ATTR_TIMEOUT => 3,
-        ];
+// PDO options — connect_timeout avoids hanging on unreachable hosts
+$options = [
+PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+PDO::ATTR_EMULATE_PREPARES => true, // Better pgbouncer support
+PDO::ATTR_TIMEOUT => 3,
+];
 
-        $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
-    } catch (PDOException $e) {
-        $db_error = $e->getMessage();
-        $pdo = null;
-    }
+$pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+} catch (PDOException $e) {
+$db_error = $e->getMessage();
+$pdo = null;
+}
 }

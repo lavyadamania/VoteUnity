@@ -184,7 +184,16 @@ $voteCount = $pdo->query("SELECT COUNT(*) FROM votes")->fetchColumn();
         </div>
         <div class="nav-links">
             <a href="dashboard.php">Dashboard</a>
-            <a href="view_votes.php">View Votes</a>
+            <a href="view_votes.php">Vote Audit</a>
+            <a href="location_tracker.php">📍 Locations</a>
+            <?php
+            $stmt = $pdo->prepare("SELECT is_super_admin FROM admins WHERE id = ?");
+            $stmt->execute([$_SESSION['admin_id']]);
+            if ($stmt->fetchColumn()): ?>
+                <a href="system_audit.php" style="color: #a855f7;">🔍 System Audit</a>
+            <?php endif; ?>
+            <a href="manage_admins.php">👥 Admins</a>
+            <a href="tamper_demo.php" class="active" style="color: #f59e0b;">🎭 Demo</a>
             <a href="logout.php">Logout</a>
         </div>
     </nav>

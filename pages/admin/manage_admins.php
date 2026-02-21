@@ -198,8 +198,12 @@ foreach ($admins as $admin) {
         <div class="nav-links">
             <a href="dashboard.php">Dashboard</a>
             <a href="view_votes.php">Vote Audit</a>
-            <a href="tamper_demo.php">🎭 Tamper Demo</a>
-            <a href="manage_admins.php" class="active">👥 Manage Admins</a>
+            <a href="location_tracker.php">📍 Locations</a>
+            <?php if ($currentAdmin['is_super_admin']): ?>
+                <a href="system_audit.php" style="color: #a855f7;">🔍 System Audit</a>
+            <?php endif; ?>
+            <a href="manage_admins.php" class="active">👥 Admins</a>
+            <a href="tamper_demo.php" style="color: #f59e0b;">🎭 Demo</a>
             <a href="logout.php">Logout</a>
         </div>
     </nav>

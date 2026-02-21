@@ -30,43 +30,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = false;
         }
 
-        if ($user && password_verify($password, $user['password'])) {
-            // Face verification (optional - skip if no face data provided)
-            $faceVerified = true;
+        // Only check login if database query succeeded
+        if ($user !== false) {
+            if ($user && password_verify($password, $user['password'])) {
+                // Face verification
+                $faceVerified = true;
 
-            if ($faceData && $user['face_image']) {
-                if (str_starts_with($user['face_image'], 'data:')) {
-                    // Vercel: face stored as base64 in DB — simple comparison
-                    // In demo mode, if both exist, consider it verified
-                    $faceVerified = !empty($faceData);
-                } else {
-                    // Local: file-based comparison
-                    $tempFacePath = dirname(__DIR__) . '/uploads/temp_login_' . $user['id'] . '.jpg';
-                    $imageData = explode(',', $faceData)[1];
-                    file_put_contents($tempFacePath, base64_decode($imageData));
+                if ($faceData && $user['face_image']) {
+                    if (str_starts_with($user['face_image'], 'data:')) {
+                        // Vercel/PostgreSQL: face stored as base64 — strict comparison
+                        $result = compareFaces($user['face_image'], $faceData);
+                        $faceVerified = $result['match'];
+                        if (!$faceVerified) {
+                            $score = round($result['score'] * 100, 1);
+                            $errors[] = "Face verification failed! Your face does not match. (Score: {$score}%, Required: 60%)";
+                        }
+                    } else {
+                        // Local: file-based comparison
+                        $tempFacePath = dirname(__DIR__) . '/uploads/temp_login_' . $user['id'] . '.jpg';
+                        $imageData = explode(',', $faceData)[1];
+                        file_put_contents($tempFacePath, base64_decode($imageData));
 
-                    $storedFacePath = dirname(__DIR__) . '/uploads/' . $user['face_image'];
-                    $faceVerified = file_exists($storedFacePath);
+                        $storedFacePath = dirname(__DIR__) . '/uploads/' . $user['face_image'];
+                        $result = compareFaces($storedFacePath, $tempFacePath);
+                        $faceVerified = $result['match'];
 
-                    // Clean up temp file
-                    @unlink($tempFacePath);
+                        if (!$faceVerified) {
+                            $score = round($result['score'] * 100, 1);
+                            $errors[] = "Face verification failed! Face does not match stored ID. (Score: {$score}%, Required: 60%)";
+                        }
+
+                        // Clean up temp file
+                        @unlink($tempFacePath);
+                    }
                 }
-            }
 
-            if ($faceVerified) {
-                // Create session
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['user_name'] = $user['name'];
-                $_SESSION['user_email'] = $user['email'];
-                $_SESSION['has_voted'] = $user['has_voted'];
+                if ($faceVerified) {
+                    // Create session
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['user_name'] = $user['name'];
+                    $_SESSION['user_email'] = $user['email'];
+                    $_SESSION['has_voted'] = $user['has_voted'];
 
-                setFlashMessage('success', 'Welcome back, ' . $user['name'] . '!');
-                redirect(BASE_URL . '/pages/vote.php');
+                    setFlashMessage('success', 'Welcome back, ' . $user['name'] . '!');
+                    redirect(BASE_URL . '/pages/vote.php');
+                }
             } else {
-                $errors[] = 'Face verification failed';
+                $errors[] = 'Invalid email or password';
             }
-        } else {
-            $errors[] = 'Invalid email or password';
         }
     }
 }
@@ -82,9 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if (!empty($errors)): ?>
             <div class="alert alert-error">
                 <?php foreach ($errors as $error): ?>
-                    <div>•
-                        <?= $error ?>
-                    </div>
+                    <div>• <?= htmlspecialchars($error) ?></div>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
@@ -103,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="form-group" id="faceVerifyContainer">
-                <label>Face Verification (Optional)</label>
+                <label>Face Verification (Required if set)</label>
                 <div class="webcam-container">
                     <video id="webcamVideo" class="webcam-preview hidden" autoplay playsinline></video>
                     <canvas id="webcamCanvas" style="display: none;"></canvas>
@@ -117,9 +126,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             📸 Capture Face
                         </button>
                     </div>
-                    <small style="color: var(--gray); display: block; margin-top: 0.5rem;">
-                        Optional: Verify your identity with face capture
-                    </small>
                 </div>
                 <input type="hidden" id="faceData" name="faceData">
             </div>

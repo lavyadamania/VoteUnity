@@ -10,6 +10,11 @@ if (!isAdminLoggedIn()) {
 // Guard: require DB
 requireDb($pdo, $db_error ?? null);
 
+// Get current admin info
+$stmt = $pdo->prepare("SELECT * FROM admins WHERE id = ?");
+$stmt->execute([$_SESSION['admin_id']]);
+$currentAdmin = $stmt->fetch();
+
 // Get statistics
 $totalUsers = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
 $stmtVoted = $pdo->prepare("SELECT COUNT(*) FROM users WHERE has_voted = TRUE");
@@ -51,6 +56,9 @@ $chainValid = verifyHashChain($pdo);
             <a href="dashboard.php" class="active">Dashboard</a>
             <a href="view_votes.php">Vote Audit</a>
             <a href="location_tracker.php">📍 Locations</a>
+            <?php if (isset($currentAdmin) && $currentAdmin['is_super_admin']): ?>
+                <a href="system_audit.php" style="color: #a855f7;">🔍 System Audit</a>
+            <?php endif; ?>
             <a href="manage_admins.php">👥 Admins</a>
             <a href="tamper_demo.php" style="color: #f59e0b;">🎭 Demo</a>
             <a href="logout.php">Logout</a>

@@ -72,10 +72,19 @@ INSERT INTO admins (username, password, is_super_admin, is_approved)
 SELECT 'lavya', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1
 WHERE NOT EXISTS (SELECT 1 FROM admins WHERE username = 'lavya');
 
--- Insert sample candidates
-INSERT INTO candidates (name, party, symbol) VALUES 
-('Rahul Gandhi', 'Indian National Congress', '✋'),
-('Narendra Modi', 'Bharatiya Janata Party', '🪷'),
-('Arvind Kejriwal', 'Aam Aadmi Party', '🧹'),
-('Mamata Banerjee', 'All India Trinamool Congress', '🌸')
-ON DUPLICATE KEY UPDATE name=name;
+-- Insert sample candidates (Idempotent: only inserts if the name/party doesn't exist)
+INSERT INTO candidates (name, party, symbol) 
+SELECT 'Rahul Gandhi', 'Indian National Congress', '✋' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM candidates WHERE name = 'Rahul Gandhi' AND party = 'Indian National Congress');
+
+INSERT INTO candidates (name, party, symbol) 
+SELECT 'Narendra Modi', 'Bharatiya Janata Party', '🪷' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM candidates WHERE name = 'Narendra Modi' AND party = 'Bharatiya Janata Party');
+
+INSERT INTO candidates (name, party, symbol) 
+SELECT 'Arvind Kejriwal', 'Aam Aadmi Party', '🧹' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM candidates WHERE name = 'Arvind Kejriwal' AND party = 'Aam Aadmi Party');
+
+INSERT INTO candidates (name, party, symbol) 
+SELECT 'Mamata Banerjee', 'All India Trinamool Congress', '🌸' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM candidates WHERE name = 'Mamata Banerjee' AND party = 'All India Trinamool Congress');

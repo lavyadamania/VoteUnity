@@ -24,10 +24,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_face'])) {
 
     if (!empty($faceData) && $user['face_image']) {
         if (str_starts_with($user['face_image'], 'data:')) {
-            // Vercel: face stored as base64 in DB — auto-verify in demo mode
-            $_SESSION['face_verified_for_vote'] = true;
-            $faceVerified = true;
-            setFlashMessage('success', 'Face verified successfully! You can now cast your vote.');
+            // Vercel: face stored as base64 in DB — strict comparison
+            $result = compareFaces($user['face_image'], $faceData);
+            if ($result['match']) {
+                $_SESSION['face_verified_for_vote'] = true;
+                $faceVerified = true;
+                setFlashMessage('success', 'Face verified successfully! (Score: ' . round($result['score'] * 100, 1) . '%) You can now cast your vote.');
+            } else {
+                $score = round($result['score'] * 100, 1);
+                setFlashMessage('error', "Face verification failed! Your face does not match. (Score: {$score}%, Required: 60%)");
+            }
         } else {
             // Local: file-based comparison
             $uploadsDir = dirname(__DIR__) . '/uploads/';
@@ -38,32 +44,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_face'])) {
             $storedFacePath = $uploadsDir . $user['face_image'];
 
             if (file_exists($storedFacePath)) {
-                $result = verifyFace($storedFacePath, $tempFacePath);
+                $result = compareFaces($storedFacePath, $tempFacePath);
 
-                if (is_array($result)) {
-                    if ($result['match']) {
-                        $_SESSION['face_verified_for_vote'] = true;
-                        $faceVerified = true;
-                        $score = round($result['score'] * 100, 1);
-                        setFlashMessage('success', "Face verified successfully! (Match score: {$score}%) You can now cast your vote.");
-                    } else {
-                        $score = round($result['score'] * 100, 1);
-                        setFlashMessage('error', "Face verification failed! Your face does not match the registered photo. (Score: {$score}%, Required: 60%)");
-                    }
+                if ($result['match']) {
+                    $_SESSION['face_verified_for_vote'] = true;
+                    $faceVerified = true;
+                    $score = round($result['score'] * 100, 1);
+                    setFlashMessage('success', "Face verified successfully! (Match score: {$score}%) You can now cast your vote.");
                 } else {
-                    if ($result) {
-                        $_SESSION['face_verified_for_vote'] = true;
-                        $faceVerified = true;
-                        setFlashMessage('success', 'Face verified successfully! You can now cast your vote.');
-                    } else {
-                        setFlashMessage('error', 'Face verification failed! Your face does not match the registered photo.');
-                    }
+                    $score = round($result['score'] * 100, 1);
+                    setFlashMessage('error', "Face verification failed! Face does not match registered photo. (Score: {$score}%, Required: 60%)");
                 }
             } else {
-                setFlashMessage('error', 'No registered face found. Please contact admin.');
+                setFlashMessage('error', 'No registered face found on local system. Please contact admin.');
             }
-
-            // Clean up temp file
             @unlink($tempFacePath);
         }
     } else {
@@ -114,8 +108,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
                 $stmt->execute([$_SESSION['user_id'], $candidateId, $voteHash, $previousHash, date('Y-m-d H:i:s', $timestamp)]);
 
                 // Update user's voted flag
-                $stmt = $pdo->prepare("UPDATE users SET has_voted = ? WHERE id = ?");
-                $stmt->execute([true, $_SESSION['user_id']]);
+                $stmt = $pdo->prepare("UPDATE users SET has_voted = TRUE WHERE id = ?");
+                $stmt->execute([$_SESSION['user_id']]);
 
                 $pdo->commit();
 
@@ -127,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
                 setFlashMessage('success', 'Your vote has been cast successfully!');
             } catch (PDOException $e) {
                 $pdo->rollBack();
-                setFlashMessage('error', 'Failed to record vote. Please try again.');
+                setFlashMessage('error', 'Failed to record vote: ' . $e->getMessage());
             }
         } else {
             setFlashMessage('error', 'Invalid candidate selected');
@@ -152,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
             <div class="alert alert-info" style="text-align: left; max-width: 500px; margin: 0 auto;">
                 <strong>Vote Details:</strong><br>
                 <small>
-                    • Voter ID: <?= $_SESSION['user_id'] ?><br>
+                    • Voter ID: <?= htmlspecialchars($_SESSION['user_id']) ?><br>
                     • Status: Verified & Recorded<br>
                     • Face Verification: ✓ Passed<br>
                     • Hash Chain: Intact ✓
@@ -242,7 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
                 <p style="color: #10b981; text-align: center;">✓ Face captured!</p>
             `;
 
-                    stream.getTracks().forEach(track => track.stop());
+                    if (stream) stream.getTracks().forEach(track => track.stop());
                     video.style.display = 'none';
                     captureBtn.classList.add('hidden');
                     verifyBtn.disabled = false;
