@@ -24,34 +24,44 @@ if (getenv('VERCEL_URL')) {
 }
 
 // Database type - 'mysql' for local, 'pgsql' for Supabase
-$dbConnection = getenv('DB_CONNECTION') ?: 'mysql';
+$dbConnection = trim(getenv('DB_CONNECTION') ?: 'mysql');
 
 // Database credentials - Environment variables (cloud) or defaults (local)
-define('DB_HOST', getenv('DB_HOST') ?: getenv('MYSQL_HOST') ?: 'localhost');
-define('DB_PORT', getenv('DB_PORT') ?: getenv('MYSQL_PORT') ?: '3307');
-define('DB_NAME', getenv('DB_NAME') ?: getenv('MYSQL_DATABASE') ?: 'voting_system');
-define('DB_USER', getenv('DB_USER') ?: getenv('MYSQL_USER') ?: 'root');
-define('DB_PASS', getenv('DB_PASS') ?: getenv('MYSQL_PASSWORD') ?: '');
+define('DB_HOST', trim(getenv('DB_HOST') ?: getenv('MYSQL_HOST') ?: 'localhost'));
+define('DB_PORT', trim(getenv('DB_PORT') ?: getenv('MYSQL_PORT') ?: '3307'));
+define('DB_NAME', trim(getenv('DB_NAME') ?: getenv('MYSQL_DATABASE') ?: 'voting_system'));
+define('DB_USER', trim(getenv('DB_USER') ?: getenv('MYSQL_USER') ?: 'root'));
+define('DB_PASS', trim(getenv('DB_PASS') ?: getenv('MYSQL_PASSWORD') ?: ''));
 
-// Create PDO connection
-try {
-    $dsn = $dbConnection . ":host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME;
+// Initialize pdo as null — pages must check before use
+$pdo = null;
+$db_error = null;
 
-    // Add charset for MySQL only
-    if ($dbConnection === 'mysql') {
-        $dsn .= ";charset=utf8mb4";
+// Only attempt connection if DB_HOST env is explicitly set (i.e. cloud DB configured)
+// or we are in local environment (not on Vercel)
+$isVercel = (bool) (getenv('VERCEL') || getenv('VERCEL_URL'));
+$hasDbConfig = (bool) (getenv('DB_HOST') || getenv('MYSQL_HOST'));
+
+if (!$isVercel || $hasDbConfig) {
+    try {
+        $dsn = $dbConnection . ":host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME;
+
+        // Add charset for MySQL only
+        if ($dbConnection === 'mysql') {
+            $dsn .= ";charset=utf8mb4";
+        }
+
+        // PDO options — connect_timeout avoids hanging on unreachable hosts
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+            PDO::ATTR_TIMEOUT => 3,
+        ];
+
+        $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+    } catch (PDOException $e) {
+        $db_error = $e->getMessage();
+        $pdo = null;
     }
-
-    // PDO options
-    $options = [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES => false
-    ];
-
-    $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
-} catch (PDOException $e) {
-    // Temporary: Show detailed error for debugging
-    $debug = "Connection: $dbConnection | Host: " . DB_HOST . " | Port: " . DB_PORT . " | DB: " . DB_NAME . " | User: " . DB_USER;
-    die("Database connection failed. Debug: $debug | Error: " . $e->getMessage());
 }

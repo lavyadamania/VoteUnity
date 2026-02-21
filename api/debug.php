@@ -17,21 +17,27 @@ echo "DB_PASS: " . (getenv('DB_PASS') ? '***SET***' : '(not set)') . "\n";
 echo "VERCEL: " . (getenv('VERCEL') ?: '(not set)') . "\n";
 echo "</pre>";
 
-echo "<h2>Testing PDO Connection:</h2>";
+// Use trimmed values
+$dbConnection = trim(getenv('DB_CONNECTION') ?: 'mysql');
+$host = trim(getenv('DB_HOST') ?: 'localhost');
+$port = trim(getenv('DB_PORT') ?: '3307');
+$dbname = trim(getenv('DB_NAME') ?: 'voting_system');
+$user = trim(getenv('DB_USER') ?: 'root');
+$pass = trim(getenv('DB_PASS') ?: '');
 
-$dbConnection = getenv('DB_CONNECTION') ?: 'mysql';
-$host = getenv('DB_HOST') ?: 'localhost';
-$port = getenv('DB_PORT') ?: '3307';
-$dbname = getenv('DB_NAME') ?: 'voting_system';
-$user = getenv('DB_USER') ?: 'root';
-$pass = getenv('DB_PASS') ?: '';
-
+echo "<h2>Trimmed Values Debug:</h2>";
 echo "<pre>";
-echo "DSN: {$dbConnection}:host={$host};port={$port};dbname={$dbname}\n";
+echo "dbConnection bytes: " . bin2hex($dbConnection) . "\n";
+echo "dbConnection length: " . strlen($dbConnection) . "\n";
+echo "dbConnection value: '" . $dbConnection . "'\n";
 echo "</pre>";
 
+echo "<h2>Testing PDO Connection:</h2>";
+
+$dsn = "{$dbConnection}:host={$host};port={$port};dbname={$dbname}";
+echo "<pre>DSN: {$dsn}</pre>";
+
 try {
-    $dsn = "{$dbConnection}:host={$host};port={$port};dbname={$dbname}";
     $pdo = new PDO($dsn, $user, $pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
     ]);
@@ -40,6 +46,10 @@ try {
     // Try a simple query
     $result = $pdo->query("SELECT 1 as test");
     echo "<p style='color: green;'>✅ Query test passed!</p>";
+
+    // Check tables
+    $tables = $pdo->query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")->fetchAll(PDO::FETCH_COLUMN);
+    echo "<p style='color: green;'>✅ Tables: " . implode(', ', $tables) . "</p>";
 } catch (PDOException $e) {
     echo "<p style='color: red;'>❌ CONNECTION FAILED!</p>";
     echo "<pre style='color: red;'>Error: " . $e->getMessage() . "</pre>";

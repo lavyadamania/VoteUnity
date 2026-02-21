@@ -32,3 +32,4 @@ Fix_*.bat
 
 # Keep these folders
 !uploads/.gitkeep
+.vercel
