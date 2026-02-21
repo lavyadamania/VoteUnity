@@ -3,7 +3,6 @@
  * Admin Location Capture Page
  * Captures location before allowing non-super admin login
  */
-session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/functions.php';
 
