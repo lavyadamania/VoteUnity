@@ -4,6 +4,7 @@
  */
 
 // Get the requested path
+header("X-Vercel-Router: Active");
 $requestUri = $_SERVER['REQUEST_URI'];
 $basePath = parse_url($requestUri, PHP_URL_PATH);
 $path = ltrim($basePath, '/');
