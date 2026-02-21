@@ -3,7 +3,6 @@
  * Admin Registration Page
  * New admins register here, then wait for Super Admin approval
  */
-session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/functions.php';
 
