@@ -12,6 +12,9 @@ if (!isAdminLoggedIn()) {
     redirect(BASE_URL . '/pages/admin/login.php');
 }
 
+// Guard: require DB
+requireDb($pdo, $db_error ?? null);
+
 $message = '';
 $messageType = '';
 

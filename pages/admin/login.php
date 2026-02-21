@@ -3,6 +3,9 @@ session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/functions.php';
 
+// Guard: require DB before any usage
+requireDb($pdo, $db_error ?? null);
+
 // Redirect if already logged in
 if (isAdminLoggedIn()) {
     redirect(BASE_URL . '/pages/admin/dashboard.php');

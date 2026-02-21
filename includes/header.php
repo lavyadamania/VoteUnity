@@ -4,6 +4,99 @@ require_once __DIR__ . '/functions.php';
 
 // Get current page for navigation highlighting
 $currentPage = basename($_SERVER['PHP_SELF'], '.php');
+
+// Guard: if DB connection failed, show a clear error instead of a fatal crash
+if ($pdo === null) {
+    $dbErrMsg = $db_error ?? 'Database not configured';
+    $isVercelConfig = getenv('VERCEL') || getenv('VERCEL_URL');
+    $setupMsg = $isVercelConfig
+        ? 'Please set DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS, and DB_CONNECTION=pgsql in your Vercel environment variables, then redeploy.'
+        : 'Please check your local database config (XAMPP running? Correct port?)';
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>VoteUnity — Database Error</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                background: #0f172a;
+                color: #e2e8f0;
+                font-family: Inter, sans-serif;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 2rem;
+            }
+
+            .card {
+                background: #1e293b;
+                border: 1px solid #ef4444;
+                border-radius: 16px;
+                padding: 2.5rem;
+                max-width: 560px;
+                width: 100%;
+                text-align: center;
+            }
+
+            .icon {
+                font-size: 3rem;
+                margin-bottom: 1rem;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+                color: #ef4444;
+                margin-bottom: 0.75rem;
+            }
+
+            .msg {
+                color: #94a3b8;
+                line-height: 1.6;
+                margin-bottom: 1.5rem;
+            }
+
+            .setup {
+                background: #0f172a;
+                border-radius: 8px;
+                padding: 1rem;
+                font-size: 0.85rem;
+                color: #fbbf24;
+                text-align: left;
+                line-height: 1.6;
+            }
+
+            code {
+                background: #1e293b;
+                padding: 0.15rem 0.4rem;
+                border-radius: 4px;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="card">
+            <div class="icon">🔌</div>
+            <h1>Database Not Connected</h1>
+            <p class="msg"><?= htmlspecialchars($dbErrMsg) ?></p>
+            <div class="setup"><?= htmlspecialchars($setupMsg) ?></div>
+        </div>
+    </body>
+
+    </html>
+    <?php
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

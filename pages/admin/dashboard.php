@@ -8,6 +8,9 @@ if (!isAdminLoggedIn()) {
     redirect(BASE_URL . '/pages/admin/login.php');
 }
 
+// Guard: require DB
+requireDb($pdo, $db_error ?? null);
+
 // Get statistics
 $totalUsers = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
 $stmtVoted = $pdo->prepare("SELECT COUNT(*) FROM users WHERE has_voted = TRUE");

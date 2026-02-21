@@ -7,6 +7,9 @@ session_start();
 require_once '../../config/database.php';
 require_once '../../includes/functions.php';
 
+// Guard: require DB before any usage
+requireDb($pdo, $db_error ?? null);
+
 $errors = [];
 $success = false;
 

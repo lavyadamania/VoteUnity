@@ -14,6 +14,94 @@ function redirect($url)
 }
 
 /**
+ * Guard: if $pdo is null, output a styled DB error page and exit.
+ * Call requireDb($pdo, $db_error) at the top of any admin page.
+ */
+function requireDb($pdo, $db_error = null)
+{
+    if ($pdo !== null)
+        return; // all good
+    $msg = $db_error ?: 'Database connection failed';
+    $isVercel = getenv('VERCEL') || getenv('VERCEL_URL');
+    $hint = $isVercel
+        ? 'Set DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS, DB_CONNECTION=pgsql in Vercel Environment Variables, then redeploy.'
+        : 'Check XAMPP is running and your database credentials are correct.';
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>VoteUnity &mdash; Database Error</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                background: #0f172a;
+                color: #e2e8f0;
+                font-family: Inter, sans-serif;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 2rem;
+            }
+
+            .card {
+                background: #1e293b;
+                border: 1px solid #ef4444;
+                border-radius: 16px;
+                padding: 2.5rem;
+                max-width: 560px;
+                width: 100%;
+                text-align: center;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+                color: #ef4444;
+                margin: 1rem 0 0.75rem;
+            }
+
+            .msg {
+                color: #94a3b8;
+                margin-bottom: 1.25rem;
+                line-height: 1.6;
+            }
+
+            .hint {
+                background: #0f172a;
+                border-radius: 8px;
+                padding: 1rem;
+                font-size: .85rem;
+                color: #fbbf24;
+                text-align: left;
+                line-height: 1.7;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="card">
+            <div style="font-size:3rem">🔌</div>
+            <h1>Database Not Connected</h1>
+            <p class="msg"><?= htmlspecialchars($msg) ?></p>
+            <div class="hint"><?= htmlspecialchars($hint) ?></div>
+        </div>
+    </body>
+
+    </html>
+    <?php
+    exit;
+}
+
+/**
  * Check if user is logged in
  */
 function isLoggedIn()
@@ -223,7 +311,8 @@ function getVotingStats($pdo)
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM users");
     $stats['total_voters'] = $stmt->fetch()['total'];
 
-    $stmt = $pdo->query("SELECT COUNT(*) as total FROM users WHERE has_voted = 1");
+    $stmt = $pdo->prepare("SELECT COUNT(*) as total FROM users WHERE has_voted = TRUE");
+    $stmt->execute();
     $stats['votes_cast'] = $stmt->fetch()['total'];
 
     $stmt = $pdo->query("SELECT COUNT(*) as total FROM candidates");

@@ -12,6 +12,9 @@ if (!isAdminLoggedIn()) {
     redirect(BASE_URL . '/pages/admin/login.php');
 }
 
+// Guard: require DB
+requireDb($pdo, $db_error ?? null);
+
 // Get current admin info
 $stmt = $pdo->prepare("SELECT * FROM admins WHERE id = ?");
 $stmt->execute([$_SESSION['admin_id']]);
