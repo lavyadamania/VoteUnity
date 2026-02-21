@@ -1,11 +1,15 @@
 {
     "builds": [
         {
-            "src": "api/index.php",
+            "src": "index.php",
             "use": "vercel-php@0.7.2"
         },
         {
-            "src": "api/debug.php",
+            "src": "pages/**/*.php",
+            "use": "vercel-php@0.7.2"
+        },
+        {
+            "src": "api/*.php",
             "use": "vercel-php@0.7.2"
         },
         {
@@ -15,13 +19,13 @@
         {
             "src": "js/**",
             "use": "@vercel/static"
+        },
+        {
+            "src": "uploads/**",
+            "use": "@vercel/static"
         }
     ],
     "routes": [
-        {
-            "src": "/api/debug",
-            "dest": "/api/debug.php"
-        },
         {
             "src": "/css/(.*)",
             "dest": "/css/$1"
@@ -31,8 +35,15 @@
             "dest": "/js/$1"
         },
         {
+            "src": "/uploads/(.*)",
+            "dest": "/uploads/$1"
+        },
+        {
+            "handle": "filesystem"
+        },
+        {
             "src": "/(.*)",
-            "dest": "/api/index.php"
+            "dest": "/index.php"
         }
     ]
 }
