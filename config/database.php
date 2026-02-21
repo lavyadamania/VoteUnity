@@ -29,25 +29,29 @@ if (getenv('VERCEL') || getenv('VERCEL_URL')) {
     define('BASE_URL', '/voting');
 }
 
-// Database type - 'mysql' for local, 'pgsql' for Supabase
-$dbConnection = trim(getenv('DB_CONNECTION') ?: 'mysql');
+// Auto-detect pgsql if Neon PG* env vars are set
+// Supports both DB_* (custom) and PG* (Neon native) variable names
+$dbConnection = trim(
+    getenv('DB_CONNECTION') ?:
+    (getenv('PGHOST') ? 'pgsql' : 'mysql')
+);
 
-// Database credentials - Environment variables (cloud) or defaults (local)
-define('DB_HOST', trim(getenv('DB_HOST') ?: getenv('MYSQL_HOST') ?: 'localhost'));
-define('DB_PORT', trim(getenv('DB_PORT') ?: getenv('MYSQL_PORT') ?: '3307'));
-define('DB_NAME', trim(getenv('DB_NAME') ?: getenv('MYSQL_DATABASE') ?: 'voting_system'));
-define('DB_USER', trim(getenv('DB_USER') ?: getenv('MYSQL_USER') ?: 'root'));
-define('DB_PASS', trim(getenv('DB_PASS') ?: getenv('MYSQL_PASSWORD') ?: ''));
+// Database credentials — try DB_* first, then PG* (Neon native), then local defaults
+define('DB_HOST', trim(getenv('DB_HOST') ?: getenv('PGHOST') ?: getenv('MYSQL_HOST') ?: 'localhost'));
+define('DB_PORT', trim(getenv('DB_PORT') ?: getenv('PGPORT') ?: getenv('MYSQL_PORT') ?: ($dbConnection === 'pgsql' ? '5432' : '3307')));
+define('DB_NAME', trim(getenv('DB_NAME') ?: getenv('PGDATABASE') ?: getenv('MYSQL_DATABASE') ?: 'voting_system'));
+define('DB_USER', trim(getenv('DB_USER') ?: getenv('PGUSER') ?: getenv('MYSQL_USER') ?: 'root'));
+define('DB_PASS', trim(getenv('DB_PASS') ?: getenv('PGPASSWORD') ?: getenv('MYSQL_PASSWORD') ?: ''));
 
 // Initialize pdo as null — pages must check before use
 $pdo = null;
 $db_error = null;
 
-// Only attempt connection if DB_HOST env is explicitly set (i.e. cloud DB configured)
-// or we are in local environment (not on Vercel)
-$hasDbConfig = (bool) (getenv('DB_HOST') || getenv('MYSQL_HOST'));
+// Attempt connection if DB is configured (PG* or DB_* env vars present) or if local
+$hasDbConfig = (bool) (getenv('DB_HOST') || getenv('PGHOST') || getenv('MYSQL_HOST'));
 
 if (!$isVercel || $hasDbConfig) {
+
     try {
         $dsn = $dbConnection . ":host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME;
 
