@@ -37,20 +37,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Check if username exists
     if (empty($errors)) {
-        $stmt = $pdo->prepare("SELECT id FROM admins WHERE username = ?");
-        $stmt->execute([$username]);
-        if ($stmt->fetch()) {
-            $errors[] = 'Username already exists';
+        try {
+            $stmt = $pdo->prepare("SELECT id FROM admins WHERE username = ?");
+            $stmt->execute([$username]);
+            if ($stmt->fetch()) {
+                $errors[] = 'Username already exists';
+            }
+        } catch (PDOException $e) {
+            $errors[] = 'Database error: ' . $e->getMessage();
         }
     }
 
     if (empty($errors)) {
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-        $stmt = $pdo->prepare("INSERT INTO admins (username, password, is_approved, can_view_votes) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$username, $hashedPassword, false, true]);
+        try {
+            $stmt = $pdo->prepare("INSERT INTO admins (username, password, is_approved, can_view_votes) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$username, $hashedPassword, false, true]);
 
-        $success = true;
+            $success = true;
+        } catch (PDOException $e) {
+            $errors[] = 'Registration failed: ' . $e->getMessage();
+        }
     }
 }
 ?>

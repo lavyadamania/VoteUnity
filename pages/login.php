@@ -20,10 +20,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (empty($errors)) {
-        // Find user
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
-        $stmt->execute([$email]);
-        $user = $stmt->fetch();
+        try {
+            // Find user
+            $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
+            $stmt->execute([$email]);
+            $user = $stmt->fetch();
+        } catch (PDOException $e) {
+            $errors[] = 'Database error: ' . $e->getMessage();
+            $user = false;
+        }
 
         if ($user && password_verify($password, $user['password'])) {
             // Face verification (optional - skip if no face data provided)

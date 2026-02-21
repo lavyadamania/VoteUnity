@@ -23,9 +23,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_step']) && $_PO
     if (empty($username) || empty($password)) {
         $errors[] = 'Username and password are required';
     } else {
-        $stmt = $pdo->prepare("SELECT * FROM admins WHERE username = ?");
-        $stmt->execute([$username]);
-        $admin = $stmt->fetch();
+        try {
+            $stmt = $pdo->prepare("SELECT * FROM admins WHERE username = ?");
+            $stmt->execute([$username]);
+            $admin = $stmt->fetch();
+        } catch (PDOException $e) {
+            $errors[] = 'Database error: ' . $e->getMessage();
+            $admin = false;
+        }
 
         if ($admin && password_verify($password, $admin['password'])) {
             // Check if admin is approved (super admin is always approved)
