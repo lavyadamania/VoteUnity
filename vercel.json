@@ -1,15 +1,7 @@
 {
     "builds": [
         {
-            "src": "index.php",
-            "use": "vercel-php@0.7.2"
-        },
-        {
-            "src": "pages/**/*.php",
-            "use": "vercel-php@0.7.2"
-        },
-        {
-            "src": "api/*.php",
+            "src": "api/index.php",
             "use": "vercel-php@0.7.2"
         },
         {
@@ -39,11 +31,8 @@
             "dest": "/uploads/$1"
         },
         {
-            "handle": "filesystem"
-        },
-        {
             "src": "/(.*)",
-            "dest": "/index.php"
+            "dest": "/api/index.php"
         }
     ]
 }
