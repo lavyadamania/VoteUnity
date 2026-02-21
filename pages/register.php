@@ -1,5 +1,5 @@
 <?php
-require_once '../includes/header.php';
+require_once __DIR__ . '/../includes/header.php';
 
 // Redirect if already logged in
 if (isLoggedIn()) {
@@ -167,4 +167,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </div>
 
-<?php require_once '../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

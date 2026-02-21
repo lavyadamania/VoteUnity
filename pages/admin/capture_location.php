@@ -4,8 +4,8 @@
  * Captures location before allowing non-super admin login
  */
 session_start();
-require_once '../../config/database.php';
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../includes/functions.php';
 
 // Check if admin has pending location requirement
 if (!isset($_SESSION['admin_requires_location']) || !isset($_SESSION['admin_pending_login'])) {

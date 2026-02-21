@@ -3,8 +3,8 @@
  * Tamper Demo - For Presentation/Viva
  * Demonstrates how the hash chain detects tampering
  */
-require_once '../../config/database.php';
-require_once '../../includes/functions.php';
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../includes/functions.php';
 
 // Check admin login
 if (!isAdminLoggedIn()) {
