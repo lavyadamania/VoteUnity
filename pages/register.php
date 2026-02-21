@@ -76,12 +76,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Hash password and insert user
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-        $stmt = $pdo->prepare("
-            INSERT INTO users (name, email, password, aadhaar_number, face_image) 
-            VALUES (?, ?, ?, ?, ?)
-        ");
-
         try {
+            $stmt = $pdo->prepare("
+                INSERT INTO users (name, email, password, aadhaar_number, face_image) 
+                VALUES (?, ?, ?, ?, ?)
+            ");
             $stmt->execute([$name, $email, $hashedPassword, $aadhaar, $faceImagePath]);
             setFlashMessage('success', 'Registration successful! Please login to continue.');
             redirect(BASE_URL . '/pages/login.php');
