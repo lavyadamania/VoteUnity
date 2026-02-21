@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     aadhaar_number VARCHAR(12) UNIQUE NOT NULL,
-    face_image VARCHAR(255),
+    face_image LONGTEXT,
     has_voted TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS candidates (
     name VARCHAR(100) NOT NULL,
     party VARCHAR(100) NOT NULL,
     symbol VARCHAR(50),
-    photo VARCHAR(255),
+    photo LONGTEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS admins (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    face_image VARCHAR(255),
+    face_image LONGTEXT,
     is_super_admin TINYINT(1) DEFAULT 0,
     is_approved TINYINT(1) DEFAULT 0,
     approved_by INT NULL,

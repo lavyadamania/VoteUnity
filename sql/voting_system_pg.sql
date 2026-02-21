@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS candidates (
     name VARCHAR(100) NOT NULL,
     party VARCHAR(100) NOT NULL,
     symbol VARCHAR(50),
-    photo VARCHAR(255),
+    photo TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -68,9 +68,8 @@ CREATE TABLE IF NOT EXISTS admin_locations (
 );
 
 -- Insert default super admin (username: admin, password: admin123)
--- Hash: $2y$10$O0kR.S3T0C9P6S1P7P6P7O0P0P0P0P0P0P0P0P0P0P0P0P0P0P0P. (Updated to 'admin123')
-INSERT INTO admins (username, password, is_super_admin, is_approved) 
-INSERT INTO admins (username, password_hash, is_approved, is_super_admin) 
+-- Hash: $2y$10$SZoDq/hiEDdeRk9C3CAjZuEM4rPNEECj66GXJWBRVeetI4a6dbASBi (admin123)
+INSERT INTO admins (username, password, is_approved, is_super_admin) 
 SELECT 'admin', '$2y$10$SZoDq/hiEDdeRk9C3CAjZuEM4rPNEECj66GXJWBRVeetI4a6dbASBi', TRUE, TRUE
 WHERE NOT EXISTS (SELECT 1 FROM admins WHERE username = 'admin');
 
