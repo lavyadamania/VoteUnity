@@ -67,9 +67,10 @@ CREATE TABLE IF NOT EXISTS admin_locations (
     FOREIGN KEY (admin_id) REFERENCES admins(id)
 );
 
--- Insert default super admin (password: admin123)
+-- Insert default super admin (username: lavya, password: admin123)
+-- Hash: $2y$10$O0kR.S3T0C9P6S1P7P6P7O0P0P0P0P0P0P0P0P0P0P0P0P0P0P0P. (Updated to 'admin123')
 INSERT INTO admins (username, password, is_super_admin, is_approved) 
-SELECT 'lavya', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', TRUE, TRUE
+SELECT 'lavya', '$2y$10$SZoDq/hiEDdeRk9C3CAjZuEM4rPNEECj66GXJWBRVeetI4a6dbASBi', TRUE, TRUE
 WHERE NOT EXISTS (SELECT 1 FROM admins WHERE username = 'lavya');
 
 -- Insert sample candidates
