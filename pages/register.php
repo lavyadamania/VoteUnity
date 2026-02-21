@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setFlashMessage('success', 'Registration successful! Please login to continue.');
             redirect(BASE_URL . '/pages/login.php');
         } catch (PDOException $e) {
-            $errors[] = 'Registration failed. Please try again.';
+            $errors[] = 'Registration failed: ' . $e->getMessage();
         }
     }
 }

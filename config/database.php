@@ -10,7 +10,8 @@
 $isVercel = (bool) (getenv('VERCEL') || getenv('VERCEL_URL'));
 
 // Configure session for Vercel (serverless needs /tmp)
-if ($isVercel) {
+// Must guard with session_status() — some admin pages call session_start() before including this file
+if ($isVercel && session_status() === PHP_SESSION_NONE) {
     ini_set('session.save_path', '/tmp');
     ini_set('session.gc_maxlifetime', 3600);
 }
