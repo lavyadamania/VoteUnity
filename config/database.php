@@ -6,6 +6,15 @@
  * Supports local (XAMPP/MySQL) and cloud (Vercel/Supabase PostgreSQL) deployment
  */
 
+// Detect deployment environment
+$isVercel = (bool) (getenv('VERCEL') || getenv('VERCEL_URL'));
+
+// Configure session for Vercel (serverless needs /tmp)
+if ($isVercel) {
+    ini_set('session.save_path', '/tmp');
+    ini_set('session.gc_maxlifetime', 3600);
+}
+
 // Start session if not started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -36,7 +45,6 @@ $db_error = null;
 
 // Only attempt connection if DB_HOST env is explicitly set (i.e. cloud DB configured)
 // or we are in local environment (not on Vercel)
-$isVercel = (bool) (getenv('VERCEL') || getenv('VERCEL_URL'));
 $hasDbConfig = (bool) (getenv('DB_HOST') || getenv('MYSQL_HOST'));
 
 if (!$isVercel || $hasDbConfig) {

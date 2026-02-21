@@ -171,57 +171,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <footer class="footer">
         <div class="footer-content">
-            <p>🔒 VoteUnity Admin Panel - "spinner">
+            <p>🔒 VoteUnity Admin Panel - Secure Access Only</p>
         </div>
-        <p>Getting your location...</p>';
-        statusDiv.className = 'location-status status-waiting';
+    </footer>
 
-        navigator.geolocation.getCurrentPosition(
-        (position) => {
-        document.getElementById('lat').value = position.coords.latitude;
-        document.getElementById('lng').value = position.coords.longitude;
-        document.getElementById('acc').value = position.coords.accuracy;
+    <script>
+        const statusDiv = document.getElementById('locationStatus');
+        const form = document.getElementById('locationForm');
+        const errorActions = document.getElementById('errorActions');
 
-        statusDiv.innerHTML = `
-        <p style="color: #10b981; font-size: 1.25rem;">✅ Location captured!</p>
-        <p style="color: var(--gray);">
-            Lat: ${position.coords.latitude.toFixed(4)}<br>
-            Lng: ${position.coords.longitude.toFixed(4)}<br>
-            Accuracy: ±${Math.round(position.coords.accuracy)}m
-        </p>
-        `;
-        statusDiv.className = 'location-status status-success';
-        form.style.display = 'block';
-        errorActions.style.display = 'none';
-        },
-        (error) => {
-        let msg = 'Location access denied';
-        if (error.code === 2) msg = 'Location unavailable';
-        if (error.code === 3) msg = 'Location request timed out';
-        showError(msg);
-        },
-        {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0
-        }
-        );
+        function getLocation() {
+            statusDiv.innerHTML = '<div class="spinner"></div><p>Getting your location...</p>';
+            statusDiv.className = 'location-status status-waiting';
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    document.getElementById('lat').value = position.coords.latitude;
+                    document.getElementById('lng').value = position.coords.longitude;
+                    document.getElementById('acc').value = position.coords.accuracy;
+
+                    statusDiv.innerHTML = `
+                        <p style="color: #10b981; font-size: 1.25rem;">✅ Location captured!</p>
+                        <p style="color: var(--gray);">
+                            Lat: ${position.coords.latitude.toFixed(4)}<br>
+                            Lng: ${position.coords.longitude.toFixed(4)}<br>
+                            Accuracy: ±${Math.round(position.coords.accuracy)}m
+                        </p>
+                    `;
+                    statusDiv.className = 'location-status status-success';
+                    form.style.display = 'block';
+                    errorActions.style.display = 'none';
+                },
+                (error) => {
+                    let msg = 'Location access denied';
+                    if (error.code === 2) msg = 'Location unavailable';
+                    if (error.code === 3) msg = 'Location request timed out';
+                    showError(msg);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0
+                }
+            );
         }
 
         function showError(message) {
-        statusDiv.innerHTML = `<p style="color: #ef4444;">❌ ${message}</p>`;
-        statusDiv.className = 'location-status status-error';
-        errorActions.style.display = 'block';
-        form.style.display = 'none';
+            statusDiv.innerHTML = `<p style="color: #ef4444;">❌ ${message}</p>`;
+            statusDiv.className = 'location-status status-error';
+            errorActions.style.display = 'block';
+            form.style.display = 'none';
         }
 
         function retryLocation() {
-        getLocation();
+            getLocation();
         }
 
         // Start getting location
         getLocation();
-        </script>
+    </script>
 </body>
 
 </html>

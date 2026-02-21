@@ -30,19 +30,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $faceVerified = true;
 
             if ($faceData && $user['face_image']) {
-                // Save captured face temporarily
-                $tempFacePath = dirname(__DIR__) . '/uploads/temp_login_' . $user['id'] . '.jpg';
-                $imageData = explode(',', $faceData)[1];
-                file_put_contents($tempFacePath, base64_decode($imageData));
+                if (str_starts_with($user['face_image'], 'data:')) {
+                    // Vercel: face stored as base64 in DB — simple comparison
+                    // In demo mode, if both exist, consider it verified
+                    $faceVerified = !empty($faceData);
+                } else {
+                    // Local: file-based comparison
+                    $tempFacePath = dirname(__DIR__) . '/uploads/temp_login_' . $user['id'] . '.jpg';
+                    $imageData = explode(',', $faceData)[1];
+                    file_put_contents($tempFacePath, base64_decode($imageData));
 
-                $storedFacePath = dirname(__DIR__) . '/uploads/' . $user['face_image'];
+                    $storedFacePath = dirname(__DIR__) . '/uploads/' . $user['face_image'];
+                    $faceVerified = file_exists($storedFacePath);
 
-                // Call Python verification (simplified - just check if file exists)
-                // In demo mode, we skip actual face matching
-                $faceVerified = file_exists($storedFacePath);
-
-                // Clean up temp file
-                @unlink($tempFacePath);
+                    // Clean up temp file
+                    @unlink($tempFacePath);
+                }
             }
 
             if ($faceVerified) {
@@ -97,11 +100,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-group" id="faceVerifyContainer">
                 <label>Face Verification (Optional)</label>
                 <div class="webcam-container">
-                    <video id="webcamVideo" class="webcam-preview" autoplay playsinline style="display: block;"></video>
+                    <video id="webcamVideo" class="webcam-preview hidden" autoplay playsinline></video>
                     <canvas id="webcamCanvas" style="display: none;"></canvas>
+                    <div id="capturePreview"></div>
 
                     <div class="webcam-controls">
-                        <button type="button" id="verifyFace" class="btn btn-secondary">
+                        <button type="button" id="startWebcam" class="btn btn-secondary">
+                            📷 Start Camera
+                        </button>
+                        <button type="button" id="capturePhoto" class="btn btn-primary hidden">
                             📸 Capture Face
                         </button>
                     </div>

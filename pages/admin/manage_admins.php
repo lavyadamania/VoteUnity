@@ -36,38 +36,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($adminId > 0 && $adminId !== $currentAdmin['id']) {
         switch ($action) {
             case 'approve':
-                $stmt = $pdo->prepare("UPDATE admins SET is_approved = 1, approved_by = ? WHERE id = ?");
+                $stmt = $pdo->prepare("UPDATE admins SET is_approved = TRUE, approved_by = ? WHERE id = ?");
                 $stmt->execute([$currentAdmin['id'], $adminId]);
                 $message = "Admin approved successfully!";
                 $messageType = 'success';
                 break;
 
             case 'reject':
-                $stmt = $pdo->prepare("DELETE FROM admins WHERE id = ? AND is_super_admin = 0");
+                $stmt = $pdo->prepare("DELETE FROM admins WHERE id = ? AND is_super_admin = FALSE");
                 $stmt->execute([$adminId]);
                 $message = "Admin rejected and removed.";
                 $messageType = 'success';
                 break;
 
             case 'revoke':
-                $stmt = $pdo->prepare("UPDATE admins SET is_approved = 0 WHERE id = ? AND is_super_admin = 0");
+                $stmt = $pdo->prepare("UPDATE admins SET is_approved = FALSE WHERE id = ? AND is_super_admin = FALSE");
                 $stmt->execute([$adminId]);
                 $message = "Admin access revoked.";
                 $messageType = 'success';
                 break;
 
             case 'update_permissions':
-                $canViewVotes = isset($_POST['can_view_votes']) ? 1 : 0;
-                $canManageCandidates = isset($_POST['can_manage_candidates']) ? 1 : 0;
-                $canResetVotes = isset($_POST['can_reset_votes']) ? 1 : 0;
-                $canManageAdmins = isset($_POST['can_manage_admins']) ? 1 : 0;
+                $canViewVotes = isset($_POST['can_view_votes']) ? true : false;
+                $canManageCandidates = isset($_POST['can_manage_candidates']) ? true : false;
+                $canResetVotes = isset($_POST['can_reset_votes']) ? true : false;
+                $canManageAdmins = isset($_POST['can_manage_admins']) ? true : false;
 
                 $stmt = $pdo->prepare("UPDATE admins SET 
                     can_view_votes = ?, 
                     can_manage_candidates = ?, 
                     can_reset_votes = ?, 
                     can_manage_admins = ? 
-                    WHERE id = ? AND is_super_admin = 0");
+                    WHERE id = ? AND is_super_admin = FALSE");
                 $stmt->execute([$canViewVotes, $canManageCandidates, $canResetVotes, $canManageAdmins, $adminId]);
                 $message = "Permissions updated successfully!";
                 $messageType = 'success';

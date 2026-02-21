@@ -3,6 +3,7 @@
  * Tamper Demo - For Presentation/Viva
  * Demonstrates how the hash chain detects tampering
  */
+session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/functions.php';
 
@@ -20,7 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'tamper') {
         // Simulate tampering - change a random vote's candidate
-        $stmt = $pdo->query("SELECT id, candidate_id FROM votes ORDER BY RAND() LIMIT 1");
+        $randomFunc = ($dbConnection === 'pgsql') ? 'RANDOM()' : 'RAND()';
+        $stmt = $pdo->query("SELECT id, candidate_id FROM votes ORDER BY $randomFunc LIMIT 1");
         $vote = $stmt->fetch();
 
         if ($vote) {
@@ -46,7 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'restore') {
         // Reset - drop all votes and let users vote again
         $pdo->exec("DELETE FROM votes");
-        $pdo->exec("UPDATE users SET has_voted = 0");
+        $stmtReset = $pdo->prepare("UPDATE users SET has_voted = FALSE");
+        $stmtReset->execute();
         $message = "✅ All votes cleared. System restored to clean state.";
         $messageType = 'success';
     }

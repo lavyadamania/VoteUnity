@@ -32,7 +32,7 @@ $locations = $pdo->query("
             SELECT MAX(tracked_at) FROM admin_locations l2 WHERE l2.admin_id = l1.admin_id
         )
     ) l ON a.id = l.admin_id
-    WHERE a.is_approved = 1 OR a.is_super_admin = 1
+    WHERE a.is_approved = TRUE OR a.is_super_admin = TRUE
     ORDER BY l.tracked_at DESC
 ")->fetchAll();
 ?>

@@ -57,16 +57,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Save face image
         $faceImagePath = null;
         if ($faceData) {
-            $uploadsDir = dirname(__DIR__) . '/uploads/faces/';
-            if (!is_dir($uploadsDir)) {
-                mkdir($uploadsDir, 0755, true);
+            if ($isVercel) {
+                // On Vercel: store base64 data URL directly in the database
+                $faceImagePath = $faceData;
+            } else {
+                // On local: save to filesystem
+                $uploadsDir = dirname(__DIR__) . '/uploads/faces/';
+                if (!is_dir($uploadsDir)) {
+                    mkdir($uploadsDir, 0755, true);
+                }
+                $imageData = explode(',', $faceData)[1];
+                $imageData = base64_decode($imageData);
+                $faceImagePath = "faces/{$aadhaar}.jpg";
+                file_put_contents($uploadsDir . "{$aadhaar}.jpg", $imageData);
             }
-
-            // Decode base64 and save
-            $imageData = explode(',', $faceData)[1];
-            $imageData = base64_decode($imageData);
-            $faceImagePath = "faces/{$aadhaar}.jpg";
-            file_put_contents($uploadsDir . "{$aadhaar}.jpg", $imageData);
         }
 
         // Hash password and insert user

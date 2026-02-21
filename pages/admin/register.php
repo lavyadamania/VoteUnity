@@ -44,8 +44,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-        $stmt = $pdo->prepare("INSERT INTO admins (username, password, is_approved, can_view_votes) VALUES (?, ?, 0, 1)");
-        $stmt->execute([$username, $hashedPassword]);
+        $stmt = $pdo->prepare("INSERT INTO admins (username, password, is_approved, can_view_votes) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$username, $hashedPassword, false, true]);
 
         $success = true;
     }

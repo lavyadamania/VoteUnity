@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS votes (
     FOREIGN KEY (candidate_id) REFERENCES candidates(id)
 );
 
--- Admins table
+-- Admins table (with permissions and approval workflow)
 CREATE TABLE IF NOT EXISTS admins (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -45,17 +45,25 @@ CREATE TABLE IF NOT EXISTS admins (
     face_image VARCHAR(255),
     is_super_admin TINYINT(1) DEFAULT 0,
     is_approved TINYINT(1) DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    approved_by INT NULL,
+    can_view_votes TINYINT(1) DEFAULT 1,
+    can_manage_candidates TINYINT(1) DEFAULT 0,
+    can_reset_votes TINYINT(1) DEFAULT 0,
+    can_manage_admins TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (approved_by) REFERENCES admins(id) ON DELETE SET NULL
 );
 
--- Admin login locations
+-- Admin login locations (with full tracking fields)
 CREATE TABLE IF NOT EXISTS admin_locations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     admin_id INT NOT NULL,
     latitude DECIMAL(10, 8) NOT NULL,
     longitude DECIMAL(11, 8) NOT NULL,
-    address TEXT,
-    login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    accuracy DECIMAL(10, 2) NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    tracked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (admin_id) REFERENCES admins(id)
 );
 

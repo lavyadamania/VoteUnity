@@ -10,7 +10,9 @@ if (!isAdminLoggedIn()) {
 
 // Get statistics
 $totalUsers = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
-$totalVoted = $pdo->query("SELECT COUNT(*) FROM users WHERE has_voted = 1")->fetchColumn();
+$stmtVoted = $pdo->prepare("SELECT COUNT(*) FROM users WHERE has_voted = TRUE");
+$stmtVoted->execute();
+$totalVoted = $stmtVoted->fetchColumn();
 $totalVotes = $pdo->query("SELECT COUNT(*) FROM votes")->fetchColumn();
 $totalCandidates = $pdo->query("SELECT COUNT(*) FROM candidates")->fetchColumn();
 

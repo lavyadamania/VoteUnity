@@ -1,6 +1,6 @@
 -- ============================================
--- VOTEUNITY - POSTGRESQL SCHEMA (for Supabase)
--- Run this in your Supabase SQL Editor
+-- VOTEUNITY - POSTGRESQL SCHEMA (for Neon/Supabase)
+-- Run this in your Neon SQL Console
 -- ============================================
 
 -- Users table
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     aadhaar_number VARCHAR(12) UNIQUE NOT NULL,
-    face_image VARCHAR(255),
+    face_image TEXT,
     has_voted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -37,25 +37,33 @@ CREATE TABLE IF NOT EXISTS votes (
     FOREIGN KEY (candidate_id) REFERENCES candidates(id)
 );
 
--- Admins table
+-- Admins table (with permissions and approval workflow)
 CREATE TABLE IF NOT EXISTS admins (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    face_image VARCHAR(255),
+    face_image TEXT,
     is_super_admin BOOLEAN DEFAULT FALSE,
     is_approved BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    approved_by INTEGER NULL,
+    can_view_votes BOOLEAN DEFAULT TRUE,
+    can_manage_candidates BOOLEAN DEFAULT FALSE,
+    can_reset_votes BOOLEAN DEFAULT FALSE,
+    can_manage_admins BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (approved_by) REFERENCES admins(id) ON DELETE SET NULL
 );
 
--- Admin login locations
+-- Admin login locations (with full tracking fields)
 CREATE TABLE IF NOT EXISTS admin_locations (
     id SERIAL PRIMARY KEY,
     admin_id INTEGER NOT NULL,
     latitude DECIMAL(10, 8) NOT NULL,
     longitude DECIMAL(11, 8) NOT NULL,
-    address TEXT,
-    login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    accuracy DECIMAL(10, 2) NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    tracked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (admin_id) REFERENCES admins(id)
 );
 

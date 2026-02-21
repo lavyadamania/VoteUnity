@@ -137,32 +137,42 @@ function initLoginForm() {
     const form = document.getElementById('loginForm');
     if (!form) return;
 
-    const faceVerifyContainer = document.getElementById('faceVerifyContainer');
     const video = document.getElementById('webcamVideo');
     const canvas = document.getElementById('webcamCanvas');
-    const verifyBtn = document.getElementById('verifyFace');
+    const startBtn = document.getElementById('startWebcam');
+    const captureBtn = document.getElementById('capturePhoto');
     const faceDataInput = document.getElementById('faceData');
+    const previewContainer = document.getElementById('capturePreview');
 
     let webcam = null;
 
-    // Auto-start webcam for login verification
-    if (faceVerifyContainer && !faceVerifyContainer.classList.contains('hidden')) {
-        setTimeout(async () => {
+    if (startBtn) {
+        startBtn.addEventListener('click', async () => {
             webcam = new WebcamCapture(video, canvas);
-            await webcam.start();
-        }, 500);
+            const started = await webcam.start();
+            if (started) {
+                video.classList.remove('hidden');
+                startBtn.classList.add('hidden');
+                captureBtn.classList.remove('hidden');
+            }
+        });
     }
 
-    if (verifyBtn) {
-        verifyBtn.addEventListener('click', () => {
+    if (captureBtn) {
+        captureBtn.addEventListener('click', () => {
             if (webcam) {
                 const imageData = webcam.capture();
                 if (imageData) {
                     faceDataInput.value = imageData;
-                    verifyBtn.textContent = '✓ Face Captured';
-                    verifyBtn.disabled = true;
-                    webcam.stop();
+                    previewContainer.innerHTML = `
+                        <img src="${imageData}" alt="Captured face" style="max-width: 200px; border-radius: 8px; margin: 1rem auto; display: block;">
+                        <p style="color: #10b981; text-align: center;">✓ Face captured!</p>
+                    `;
                 }
+
+                webcam.stop();
+                video.classList.add('hidden');
+                captureBtn.classList.add('hidden');
             }
         });
     }

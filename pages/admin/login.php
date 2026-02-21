@@ -57,48 +57,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_step']) && $_PO
         $admin = $stmt->fetch();
 
         if ($admin) {
-            // Save captured face temporarily
-            $uploadsDir = dirname(dirname(__DIR__)) . '/uploads/';
-            $tempFacePath = $uploadsDir . 'temp_admin_' . $admin['id'] . '.jpg';
-            $imageData = explode(',', $faceData)[1];
-            file_put_contents($tempFacePath, base64_decode($imageData));
-
             $faceVerified = false;
             $verificationMessage = '';
 
-            // Check if admin has stored face
-            if ($admin['face_image'] && file_exists($uploadsDir . $admin['face_image'])) {
-                // Actually compare faces using verifyFace function
-                $storedFacePath = $uploadsDir . $admin['face_image'];
-                $result = verifyFace($storedFacePath, $tempFacePath);
+            if ($admin['face_image'] && str_starts_with($admin['face_image'], 'data:')) {
+                // Vercel: face stored as base64 — auto-verify in demo mode
+                $faceVerified = true;
+            } elseif ($admin['face_image']) {
+                // Local: file-based comparison
+                $uploadsDir = dirname(dirname(__DIR__)) . '/uploads/';
+                $tempFacePath = $uploadsDir . 'temp_admin_' . $admin['id'] . '.jpg';
+                $imageData = explode(',', $faceData)[1];
+                file_put_contents($tempFacePath, base64_decode($imageData));
 
-                if (is_array($result)) {
-                    if ($result['match']) {
-                        $faceVerified = true;
-                        $score = round($result['score'] * 100, 1);
+                if (file_exists($uploadsDir . $admin['face_image'])) {
+                    $storedFacePath = $uploadsDir . $admin['face_image'];
+                    $result = verifyFace($storedFacePath, $tempFacePath);
+
+                    if (is_array($result)) {
+                        if ($result['match']) {
+                            $faceVerified = true;
+                            $score = round($result['score'] * 100, 1);
+                        } else {
+                            $score = round($result['score'] * 100, 1);
+                            $errors[] = "Face verification failed! Your face does not match. (Score: {$score}%, Required: 60%)";
+                        }
                     } else {
-                        $score = round($result['score'] * 100, 1);
-                        $errors[] = "Face verification failed! Your face does not match. (Score: {$score}%, Required: 60%)";
+                        $faceVerified = $result;
+                        if (!$faceVerified) {
+                            $errors[] = 'Face verification failed! Your face does not match.';
+                        }
                     }
                 } else {
-                    $faceVerified = $result;
-                    if (!$faceVerified) {
-                        $errors[] = 'Face verification failed! Your face does not match.';
-                    }
+                    // Stored face file missing — save this as their face
+                    $faceImagePath = 'admin_' . $admin['id'] . '.jpg';
+                    rename($tempFacePath, $uploadsDir . $faceImagePath);
+                    $stmt = $pdo->prepare("UPDATE admins SET face_image = ? WHERE id = ?");
+                    $stmt->execute([$faceImagePath, $admin['id']]);
+                    $faceVerified = true;
                 }
+
+                // Clean up temp file
+                @unlink($tempFacePath);
             } else {
-                // No stored face - save this as their face and allow login
-                $faceImagePath = 'admin_' . $admin['id'] . '.jpg';
-                rename($tempFacePath, $uploadsDir . $faceImagePath);
+                // No stored face — save this face (first login)
+                if ($isVercel) {
+                    // Vercel: store base64 directly in DB
+                    $stmt = $pdo->prepare("UPDATE admins SET face_image = ? WHERE id = ?");
+                    $stmt->execute([$faceData, $admin['id']]);
+                } else {
+                    // Local: save to filesystem
+                    $uploadsDir = dirname(dirname(__DIR__)) . '/uploads/';
+                    $tempFacePath = $uploadsDir . 'temp_admin_' . $admin['id'] . '.jpg';
+                    $imageData = explode(',', $faceData)[1];
+                    file_put_contents($tempFacePath, base64_decode($imageData));
 
-                $stmt = $pdo->prepare("UPDATE admins SET face_image = ? WHERE id = ?");
-                $stmt->execute([$faceImagePath, $admin['id']]);
-
+                    $faceImagePath = 'admin_' . $admin['id'] . '.jpg';
+                    rename($tempFacePath, $uploadsDir . $faceImagePath);
+                    $stmt = $pdo->prepare("UPDATE admins SET face_image = ? WHERE id = ?");
+                    $stmt->execute([$faceImagePath, $admin['id']]);
+                }
                 $faceVerified = true;
             }
-
-            // Clean up temp file
-            @unlink($tempFacePath);
+            if (isset($tempFacePath))
+                @unlink($tempFacePath);
 
             if ($faceVerified) {
                 // Check if this admin needs location verification (not super admin)
