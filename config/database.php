@@ -46,9 +46,11 @@ if (!$isVercel || $hasDbConfig) {
     try {
         $dsn = $dbConnection . ":host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME;
 
-        // Add charset for MySQL only
+        // Add charset for MySQL, SSL for PostgreSQL (required by Neon)
         if ($dbConnection === 'mysql') {
             $dsn .= ";charset=utf8mb4";
+        } elseif ($dbConnection === 'pgsql') {
+            $dsn .= ";sslmode=require";
         }
 
         // PDO options — connect_timeout avoids hanging on unreachable hosts
