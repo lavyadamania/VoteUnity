@@ -31,23 +31,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_step']) && $_PO
             $admin = false;
         }
 
-        if ($admin && password_verify($password, $admin['password'])) {
-            // Check if admin is approved (super admin is always approved)
-            // Use null coalescing for backwards compatibility before migration
-            $isSuperAdmin = $admin['is_super_admin'] ?? 1; // Default to super if column missing
-            $isApproved = $admin['is_approved'] ?? 1; // Default to approved if column missing
+        // Only check login if database query succeeded
+        if ($admin !== false) {
+            if ($admin && password_verify($password, $admin['password'])) {
+                // Check if admin is approved (super admin is always approved)
+                // Use null coalescing for backwards compatibility before migration
+                $isSuperAdmin = $admin['is_super_admin'] ?? 1; // Default to super if column missing
+                $isApproved = $admin['is_approved'] ?? 1; // Default to approved if column missing
 
-            if (!$isSuperAdmin && !$isApproved) {
-                $errors[] = 'Your account is pending approval from the Super Admin.';
+                if (!$isSuperAdmin && !$isApproved) {
+                    $errors[] = 'Your account is pending approval from the Super Admin.';
+                } else {
+                    // Credentials valid, proceed to face verification
+                    $_SESSION['admin_login_step'] = 'face';
+                    $_SESSION['pending_admin_id'] = $admin['id'];
+                    $step = 'face';
+                    $pendingAdminId = $admin['id'];
+                }
             } else {
-                // Credentials valid, proceed to face verification
-                $_SESSION['admin_login_step'] = 'face';
-                $_SESSION['pending_admin_id'] = $admin['id'];
-                $step = 'face';
-                $pendingAdminId = $admin['id'];
+                $errors[] = 'Invalid username or password';
             }
-        } else {
-            $errors[] = 'Invalid username or password';
         }
     }
 }
