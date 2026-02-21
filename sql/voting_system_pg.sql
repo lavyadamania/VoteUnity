@@ -67,11 +67,12 @@ CREATE TABLE IF NOT EXISTS admin_locations (
     FOREIGN KEY (admin_id) REFERENCES admins(id)
 );
 
--- Insert default super admin (username: lavya, password: admin123)
+-- Insert default super admin (username: admin, password: admin123)
 -- Hash: $2y$10$O0kR.S3T0C9P6S1P7P6P7O0P0P0P0P0P0P0P0P0P0P0P0P0P0P0P. (Updated to 'admin123')
 INSERT INTO admins (username, password, is_super_admin, is_approved) 
-SELECT 'lavya', '$2y$10$SZoDq/hiEDdeRk9C3CAjZuEM4rPNEECj66GXJWBRVeetI4a6dbASBi', TRUE, TRUE
-WHERE NOT EXISTS (SELECT 1 FROM admins WHERE username = 'lavya');
+INSERT INTO admins (username, password_hash, is_approved, is_super_admin) 
+SELECT 'admin', '$2y$10$SZoDq/hiEDdeRk9C3CAjZuEM4rPNEECj66GXJWBRVeetI4a6dbASBi', TRUE, TRUE
+WHERE NOT EXISTS (SELECT 1 FROM admins WHERE username = 'admin');
 
 -- Insert sample candidates (Idempotent: only inserts if the name/party doesn't exist)
 INSERT INTO candidates (name, party, symbol) 

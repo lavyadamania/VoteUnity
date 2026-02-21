@@ -68,9 +68,9 @@ CREATE TABLE IF NOT EXISTS admin_locations (
 );
 
 -- Insert default super admin (password: admin123)
-INSERT INTO admins (username, password, is_super_admin, is_approved) 
-SELECT 'lavya', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1
-WHERE NOT EXISTS (SELECT 1 FROM admins WHERE username = 'lavya');
+INSERT INTO admins (username, password, is_approved, is_super_admin) 
+SELECT 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 1
+WHERE NOT EXISTS (SELECT 1 FROM admins WHERE username = 'admin');
 
 -- Insert sample candidates (Idempotent: only inserts if the name/party doesn't exist)
 INSERT INTO candidates (name, party, symbol) 

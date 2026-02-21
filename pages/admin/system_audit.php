@@ -124,12 +124,15 @@ $votes = $pdo->query("
                 <p style="color: var(--gray);">Direct Database Access - Super-Admin Level</p>
             </div>
             <div style="text-align: right;">
-                <span class="badge badge-super" style="background: #8b5cf6; color: white; padding: 0.5rem 1rem; border-radius: 20px;">👑 Super Admin: lavya</span>
+                <span class="badge badge-super"
+                    style="background: #8b5cf6; color: white; padding: 0.5rem 1rem; border-radius: 20px;">👑 Super
+                    Admin: admin</span>
             </div>
         </div>
 
         <div class="audit-tabs">
-            <div class="audit-tab active" onclick="showSection('users')">👥 Registered Voters (<?= count($users) ?>)</div>
+            <div class="audit-tab active" onclick="showSection('users')">👥 Registered Voters (<?= count($users) ?>)
+            </div>
             <div class="audit-tab" onclick="showSection('candidates')">🗳️ Candidates (<?= count($candidates) ?>)</div>
             <div class="audit-tab" onclick="showSection('votes')">🔗 Hash-Chain Votes (<?= count($votes) ?>)</div>
         </div>
@@ -153,16 +156,21 @@ $votes = $pdo->query("
                                 <tr>
                                     <td>
                                         <?php if ($user['face_image']): ?>
-                                            <img src="<?= str_starts_with($user['face_image'], 'data:') ? $user['face_image'] : BASE_URL . '/uploads/' . $user['face_image'] ?>" class="avatar-small">
+                                            <img src="<?= str_starts_with($user['face_image'], 'data:') ? $user['face_image'] : BASE_URL . '/uploads/' . $user['face_image'] ?>"
+                                                class="avatar-small">
                                         <?php else: ?>
-                                            <div class="avatar-small" style="background: #333; display: flex; align-items: center; justify-content: center;">👤</div>
+                                            <div class="avatar-small"
+                                                style="background: #333; display: flex; align-items: center; justify-content: center;">
+                                                👤</div>
                                         <?php endif; ?>
                                     </td>
-                                    <td><strong><?= htmlspecialchars($user['name']) ?></strong><br><small><?= htmlspecialchars($user['email']) ?></small></td>
+                                    <td><strong><?= htmlspecialchars($user['name']) ?></strong><br><small><?= htmlspecialchars($user['email']) ?></small>
+                                    </td>
                                     <td><code><?= htmlspecialchars($user['aadhaar_number']) ?></code></td>
                                     <td><?= date('M j, Y', strtotime($user['created_at'])) ?></td>
                                     <td>
-                                        <span class="badge" style="background: <?= $user['has_voted'] ? '#10b981' : '#3b82f6' ?>; color: white;">
+                                        <span class="badge"
+                                            style="background: <?= $user['has_voted'] ? '#10b981' : '#3b82f6' ?>; color: white;">
                                             <?= $user['has_voted'] ? 'Voted ✓' : 'Eligible' ?>
                                         </span>
                                     </td>
@@ -219,8 +227,13 @@ $votes = $pdo->query("
                             <?php foreach ($votes as $vote): ?>
                                 <tr>
                                     <td><?= htmlspecialchars($vote['voter_name']) ?></td>
-                                    <td><span class="badge" style="background: rgba(255,255,255,0.1);"><?= htmlspecialchars($vote['candidate_name']) ?></span></td>
-                                    <td><div class="code-block" title="<?= $vote['vote_hash'] ?>"><?= $vote['vote_hash'] ?></div></td>
+                                    <td><span class="badge"
+                                            style="background: rgba(255,255,255,0.1);"><?= htmlspecialchars($vote['candidate_name']) ?></span>
+                                    </td>
+                                    <td>
+                                        <div class="code-block" title="<?= $vote['vote_hash'] ?>"><?= $vote['vote_hash'] ?>
+                                        </div>
+                                    </td>
                                     <td><?= date('M j, g:i A', strtotime($vote['timestamp'])) ?></td>
                                 </tr>
                             <?php endforeach; ?>

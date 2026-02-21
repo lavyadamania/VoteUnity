@@ -39,7 +39,7 @@ A secure online voting platform with face verification, Aadhaar-based identity v
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/lavyadamania/VoteUnity.git
+   git clone [Your-Repository-URL]
    ```
 
 2. **Configure Database**
@@ -55,7 +55,7 @@ A secure online voting platform with face verification, Aadhaar-based identity v
 
 | Account | Username | Password |
 |---------|----------|----------|
-| Super Admin | `lavya` | `admin123` |
+| Super Admin | `admin` | `admin123` |
 
 ## 🔒 Security Features
 
@@ -67,7 +67,7 @@ A secure online voting platform with face verification, Aadhaar-based identity v
 
 ## 👨‍💻 Author
 
-**Lavya**
+**System Admin**
 
 ---
 
