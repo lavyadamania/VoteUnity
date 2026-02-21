@@ -6,6 +6,9 @@
  * Supports local (XAMPP/MySQL) and cloud (Vercel/Supabase PostgreSQL) deployment
  */
 
+// Global Output Buffering - Fixes "Headers already sent" errors project-wide
+@ob_start();
+
 // Detect deployment environment
 $isVercel = (bool) (getenv('VERCEL') || getenv('VERCEL_URL'));
 
