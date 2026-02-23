@@ -126,6 +126,7 @@ $locations = $pdo->query("
                 <a href="system_audit.php" style="color: #a855f7;">🔍 System Audit</a>
             <?php endif; ?>
             <a href="manage_admins.php">👥 Admins</a>
+            <a href="audit_logs.php" style="color: #10b981;">📋 Audit Logs</a>
             <a href="tamper_demo.php" style="color: #f59e0b;">🎭 Demo</a>
             <a href="logout.php">Logout</a>
         </div>

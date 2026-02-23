@@ -25,13 +25,18 @@ CREATE TABLE IF NOT EXISTS candidates (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Votes table (with blockchain-style hash chain)
+-- Votes table (immutable ledger with Merkle tree)
 CREATE TABLE IF NOT EXISTS votes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     candidate_id INT NOT NULL,
     vote_hash VARCHAR(64) NOT NULL,
     previous_hash VARCHAR(64) NOT NULL,
+    encrypted_vote TEXT NULL,
+    block_index INT NULL,
+    nonce VARCHAR(32) NULL,
+    merkle_root VARCHAR(64) NULL,
+    vote_receipt VARCHAR(64) NULL UNIQUE,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (candidate_id) REFERENCES candidates(id)
@@ -52,6 +57,21 @@ CREATE TABLE IF NOT EXISTS admins (
     can_manage_admins TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (approved_by) REFERENCES admins(id) ON DELETE SET NULL
+);
+
+-- Audit logs table (security event tracking)
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    event_type VARCHAR(30) NOT NULL,
+    actor_type VARCHAR(10) NOT NULL DEFAULT 'system',
+    actor_id INT NULL,
+    details TEXT,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_event_type (event_type),
+    INDEX idx_actor (actor_type, actor_id),
+    INDEX idx_created_at (created_at)
 );
 
 -- Admin login locations (with full tracking fields)

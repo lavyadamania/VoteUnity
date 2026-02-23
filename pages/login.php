@@ -72,10 +72,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['user_email'] = $user['email'];
                     $_SESSION['has_voted'] = $user['has_voted'];
 
+                    // Issue JWT token
+                    $jwt = generateJWT([
+                        'user_id' => $user['id'],
+                        'email' => $user['email'],
+                        'role' => 'voter'
+                    ]);
+                    setJWTCookie($jwt);
+
+                    // Audit log
+                    logAuditEvent($pdo, AUDIT_LOGIN, ACTOR_VOTER, $user['id'], 'Voter login successful: ' . $user['email']);
+
                     setFlashMessage('success', 'Welcome back, ' . $user['name'] . '!');
                     redirect(BASE_URL . '/pages/vote.php');
                 }
             } else {
+                logAuditEvent($pdo, AUDIT_LOGIN_FAIL, ACTOR_VOTER, null, 'Failed voter login attempt for email: ' . $email);
                 $errors[] = 'Invalid email or password';
             }
         }

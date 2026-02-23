@@ -3,6 +3,11 @@
  * Core Helper Functions
  */
 
+require_once __DIR__ . '/jwt_helper.php';
+require_once __DIR__ . '/encryption.php';
+require_once __DIR__ . '/audit_logger.php';
+require_once __DIR__ . '/merkle_tree.php';
+
 /**
  * Redirect to a URL
  */
@@ -136,16 +141,17 @@ function getLastVoteHash($pdo)
 }
 
 /**
- * Blockchain-style vote hashing
+ * Blockchain-style vote hashing (upgraded with nonce for immutable ledger)
  */
-function generateVoteHash($userId, $candidateId, $timestamp, $previousHash)
+function generateVoteHash($userId, $candidateId, $timestamp, $previousHash, $nonce = '')
 {
-    $data = $userId . $candidateId . $timestamp . $previousHash;
+    $data = $userId . $candidateId . $timestamp . $previousHash . $nonce;
     return hash('sha256', $data);
 }
 
 /**
- * Verify the entire hash chain integrity
+ * Verify the entire hash chain integrity (backward compatible)
+ * Handles both legacy votes (no nonce) and new ledger votes (with nonce)
  */
 function verifyHashChain($pdo)
 {
@@ -162,11 +168,14 @@ function verifyHashChain($pdo)
             return false;
         }
 
+        // Support both legacy (no nonce) and new ledger (with nonce)
+        $nonce = $vote['nonce'] ?? '';
         $expectedHash = generateVoteHash(
             $vote['user_id'],
             $vote['candidate_id'],
             strtotime($vote['timestamp']),
-            $previousHash
+            $previousHash,
+            $nonce
         );
 
         if ($vote['vote_hash'] !== $expectedHash) {
@@ -177,6 +186,24 @@ function verifyHashChain($pdo)
     }
 
     return true;
+}
+
+/**
+ * Get comprehensive voting ledger info (for public verification page)
+ */
+function getVotingLedgerInfo($pdo)
+{
+    $stats = getVotingStats($pdo);
+    $merkleInfo = computeMerkleRoot($pdo);
+
+    return [
+        'total_voters' => $stats['total_voters'],
+        'votes_cast' => $stats['votes_cast'],
+        'total_candidates' => $stats['total_candidates'],
+        'chain_valid' => $stats['chain_valid'],
+        'merkle_root' => $merkleInfo['root'],
+        'vote_count' => $merkleInfo['count'],
+    ];
 }
 
 /**
@@ -222,9 +249,128 @@ function validateEmail($email)
 }
 
 /**
- * Biometric similarity check
+ * Biometric similarity check — ArcFace with GD fallback
+ *
+ * Tries ArcFace deep-learning verification first (via Python subprocess).
+ * Falls back to GD pixel-diff if Python/InsightFace is unavailable.
  */
 function compareFaces($img1Input, $img2Input)
+{
+    // Try ArcFace first
+    $arcfaceResult = compareFacesArcFace($img1Input, $img2Input);
+    if ($arcfaceResult !== null) {
+        return $arcfaceResult;
+    }
+
+    // Fallback to GD pixel-diff
+    return compareFacesGD($img1Input, $img2Input);
+}
+
+/**
+ * ArcFace-based face comparison via Python subprocess.
+ * Returns null if Python/InsightFace is not available (triggering GD fallback).
+ */
+function compareFacesArcFace($img1Input, $img2Input)
+{
+    $pythonScript = dirname(__DIR__) . '/python/arcface_verify.py';
+
+    if (!file_exists($pythonScript)) {
+        return null;
+    }
+
+    // Detect python executable
+    $pythonBin = null;
+    foreach (['python3', 'python'] as $candidate) {
+        $check = @shell_exec($candidate . ' --version 2>&1');
+        if ($check && stripos($check, 'python') !== false) {
+            $pythonBin = $candidate;
+            break;
+        }
+    }
+    if (!$pythonBin) {
+        return null;
+    }
+
+    // Write images to temp files if they are base64 data URLs
+    $tempFiles = [];
+
+    $prepareInput = function ($input) use (&$tempFiles) {
+        if (str_starts_with($input, 'data:')) {
+            $data = explode(',', $input, 2)[1];
+            $tempPath = sys_get_temp_dir() . '/arcface_' . bin2hex(random_bytes(8)) . '.jpg';
+            file_put_contents($tempPath, base64_decode($data));
+            $tempFiles[] = $tempPath;
+            return $tempPath;
+        }
+        return $input;
+    };
+
+    $path1 = $prepareInput($img1Input);
+    $path2 = $prepareInput($img2Input);
+
+    // Build and execute command
+    $cmd = escapeshellarg($pythonBin) . ' '
+        . escapeshellarg($pythonScript) . ' '
+        . escapeshellarg($path1) . ' '
+        . escapeshellarg($path2) . ' 2>&1';
+
+    $output = @shell_exec($cmd);
+
+    // Clean up temp files
+    foreach ($tempFiles as $tf) {
+        @unlink($tf);
+    }
+
+    if (!$output) {
+        return null;
+    }
+
+    // Parse output: "MATCH:<score>" or "NO_MATCH:<score>"
+    $output = trim($output);
+
+    // Find the MATCH or NO_MATCH line (ignore warnings/info on stderr)
+    $lines = explode("\n", $output);
+    $resultLine = null;
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if (str_starts_with($line, 'MATCH:') || str_starts_with($line, 'NO_MATCH:')) {
+            $resultLine = $line;
+            break;
+        }
+    }
+
+    if (!$resultLine) {
+        return null; // Could not parse output — fall back to GD
+    }
+
+    if (str_starts_with($resultLine, 'MATCH:')) {
+        $score = floatval(substr($resultLine, 6));
+        return [
+            'match' => true,
+            'score' => round($score, 4),
+            'threshold' => 0.60,
+            'method' => 'arcface'
+        ];
+    }
+
+    if (str_starts_with($resultLine, 'NO_MATCH:')) {
+        $score = floatval(substr($resultLine, 9));
+        return [
+            'match' => false,
+            'score' => round($score, 4),
+            'threshold' => 0.60,
+            'method' => 'arcface'
+        ];
+    }
+
+    return null;
+}
+
+/**
+ * GD pixel-diff face comparison (legacy fallback).
+ * Used when Python/InsightFace is not available.
+ */
+function compareFacesGD($img1Input, $img2Input)
 {
     if (!extension_loaded('gd')) {
         return ['match' => true, 'score' => 0.85, 'method' => 'fallback'];

@@ -82,9 +82,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 VALUES (?, ?, ?, ?, ?)
             ");
             $stmt->execute([$name, $email, $hashedPassword, $aadhaar, $faceImagePath]);
+
+            // Audit log
+            $newUserId = $pdo->lastInsertId();
+            logAuditEvent($pdo, AUDIT_REGISTER, ACTOR_VOTER, $newUserId, 'New voter registration: ' . $email);
+
             setFlashMessage('success', 'Registration successful! Please login to continue.');
             redirect(BASE_URL . '/pages/login.php');
         } catch (PDOException $e) {
+            logAuditEvent($pdo, AUDIT_REGISTER, ACTOR_SYSTEM, null, 'Registration failed for email: ' . $email . ' — ' . $e->getMessage());
             $errors[] = 'Registration failed: ' . $e->getMessage();
         }
     }

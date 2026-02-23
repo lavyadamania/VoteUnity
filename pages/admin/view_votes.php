@@ -70,6 +70,7 @@ $chainValid = verifyHashChain($pdo);
                 <a href="system_audit.php" style="color: #a855f7;">🔍 System Audit</a>
             <?php endif; ?>
             <a href="manage_admins.php">👥 Admins</a>
+            <a href="audit_logs.php" style="color: #10b981;">📋 Audit Logs</a>
             <a href="tamper_demo.php" style="color: #f59e0b;">🎭 Demo</a>
             <a href="logout.php">Logout</a>
         </div>
@@ -101,12 +102,16 @@ $chainValid = verifyHashChain($pdo);
 
         <!-- Explanation -->
         <div class="card" style="margin-bottom: 2rem;">
-            <h3 style="margin-bottom: 1rem;">📚 How Hash Chaining Works</h3>
+            <h3 style="margin-bottom: 1rem;">📚 How the Immutable Ledger Works</h3>
             <p style="color: var(--gray); line-height: 1.8;">
-                Each vote is secured using a cryptographic hash that includes the previous vote's hash, creating an
-                unbreakable chain. If anyone attempts to modify a vote, the chain breaks, and the tampering is detected.
+                Each vote is secured using a cryptographic hash that includes the previous vote's hash and a unique
+                nonce, creating an
+                unbreakable chain. Vote data is encrypted with AES-256-GCM, and all vote hashes form a Merkle tree for
+                efficient verification.
+                If anyone attempts to modify a vote, the chain breaks, and the tampering is instantly detected.
                 <br><br>
-                <strong>Hash Formula:</strong> <code>SHA256(user_id + candidate_id + timestamp + previous_hash)</code>
+                <strong>Hash Formula:</strong>
+                <code>SHA256(user_id + candidate_id + timestamp + previous_hash + nonce)</code>
             </p>
         </div>
 

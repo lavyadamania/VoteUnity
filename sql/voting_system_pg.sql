@@ -25,13 +25,18 @@ CREATE TABLE IF NOT EXISTS candidates (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Votes table (with blockchain-style hash chain)
+-- Votes table (immutable ledger with Merkle tree)
 CREATE TABLE IF NOT EXISTS votes (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     candidate_id INTEGER NOT NULL,
     vote_hash VARCHAR(64) NOT NULL,
     previous_hash VARCHAR(64) NOT NULL,
+    encrypted_vote TEXT NULL,
+    block_index INTEGER NULL,
+    nonce VARCHAR(32) NULL,
+    merkle_root VARCHAR(64) NULL,
+    vote_receipt VARCHAR(64) NULL UNIQUE,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (candidate_id) REFERENCES candidates(id)
@@ -53,6 +58,21 @@ CREATE TABLE IF NOT EXISTS admins (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (approved_by) REFERENCES admins(id) ON DELETE SET NULL
 );
+
+-- Audit logs table (security event tracking)
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id SERIAL PRIMARY KEY,
+    event_type VARCHAR(30) NOT NULL,
+    actor_type VARCHAR(10) NOT NULL DEFAULT 'system',
+    actor_id INTEGER NULL,
+    details TEXT,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_audit_event_type ON audit_logs(event_type);
+CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_logs(actor_type, actor_id);
+CREATE INDEX IF NOT EXISTS idx_audit_created_at ON audit_logs(created_at);
 
 -- Admin login locations (with full tracking fields)
 CREATE TABLE IF NOT EXISTS admin_locations (

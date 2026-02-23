@@ -89,23 +89,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
             $previousHash = getLastVoteHash($pdo);
             $timestamp = time();
 
-            // Generate vote hash
+            // Generate block index (sequential)
+            $blockIndex = $pdo->query("SELECT COUNT(*) FROM votes")->fetchColumn() + 1;
+
+            // Generate random nonce for hash uniqueness
+            $nonce = bin2hex(random_bytes(16));
+
+            // Generate vote hash (upgraded with nonce)
             $voteHash = generateVoteHash(
                 $_SESSION['user_id'],
                 $candidateId,
                 $timestamp,
-                $previousHash
+                $previousHash,
+                $nonce
             );
+
+            // Encrypt vote data
+            $voteData = json_encode([
+                'user_id' => $_SESSION['user_id'],
+                'candidate_id' => $candidateId,
+                'timestamp' => $timestamp,
+                'block_index' => $blockIndex
+            ]);
+            $encryptedVote = encryptVote($voteData);
+
+            // Generate unique vote receipt token
+            $voteReceipt = hash('sha256', random_bytes(32) . $voteHash . $timestamp);
 
             try {
                 $pdo->beginTransaction();
 
-                // Insert vote
+                // Insert vote with full ledger data
                 $stmt = $pdo->prepare("
-                    INSERT INTO votes (user_id, candidate_id, vote_hash, previous_hash, timestamp) 
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO votes (user_id, candidate_id, vote_hash, previous_hash, encrypted_vote, block_index, nonce, vote_receipt, timestamp) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
-                $stmt->execute([$_SESSION['user_id'], $candidateId, $voteHash, $previousHash, date('Y-m-d H:i:s', $timestamp)]);
+                $stmt->execute([
+                    $_SESSION['user_id'],
+                    $candidateId,
+                    $voteHash,
+                    $previousHash,
+                    $encryptedVote,
+                    $blockIndex,
+                    $nonce,
+                    $voteReceipt,
+                    date('Y-m-d H:i:s', $timestamp)
+                ]);
+
+                // Compute Merkle root after inserting
+                $merkleInfo = computeMerkleRoot($pdo);
+                $merkleRoot = $merkleInfo['root'];
+
+                // Update the vote with Merkle root
+                $stmt = $pdo->prepare("UPDATE votes SET merkle_root = ? WHERE vote_hash = ?");
+                $stmt->execute([$merkleRoot, $voteHash]);
 
                 // Update user's voted flag
                 $stmt = $pdo->prepare("UPDATE users SET has_voted = TRUE WHERE id = ?");
@@ -115,10 +152,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
 
                 // Update session and clear face verification
                 $_SESSION['has_voted'] = 1;
+                $_SESSION['vote_receipt'] = $voteReceipt;
+                $_SESSION['vote_hash'] = $voteHash;
                 unset($_SESSION['face_verified_for_vote']);
                 $hasVoted = 1;
 
-                setFlashMessage('success', 'Your vote has been cast successfully!');
+                // Audit log
+                logAuditEvent(
+                    $pdo,
+                    AUDIT_VOTE_CAST,
+                    ACTOR_VOTER,
+                    $_SESSION['user_id'],
+                    "Vote cast — Block #$blockIndex, Receipt: " . substr($voteReceipt, 0, 16) . '...'
+                );
+
+                setFlashMessage('success', 'Your vote has been cast and encrypted successfully!');
             } catch (PDOException $e) {
                 $pdo->rollBack();
                 setFlashMessage('error', 'Failed to record vote: ' . $e->getMessage());
@@ -140,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
             <div class="vote-success-icon">✅</div>
             <h2>Thank You for Voting!</h2>
             <p style="color: var(--gray); margin: 1rem 0 2rem;">
-                Your vote has been recorded and secured with blockchain-style hash chaining.
+                Your vote has been encrypted and secured with an immutable ledger + Merkle tree.
             </p>
 
             <div class="alert alert-info" style="text-align: left; max-width: 500px; margin: 0 auto;">
@@ -149,9 +197,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
                     • Voter ID: <?= htmlspecialchars($_SESSION['user_id']) ?><br>
                     • Status: Verified & Recorded<br>
                     • Face Verification: ✓ Passed<br>
-                    • Hash Chain: Intact ✓
+                    • Encryption: 🔒 AES-256-GCM<br>
+                    • Hash Chain: Intact ✓<br>
+                    • Merkle Tree: Included ✓
                 </small>
             </div>
+
+            <?php if (isset($_SESSION['vote_receipt'])): ?>
+                <div
+                    style="margin-top: 1.5rem; background: rgba(99, 102, 241, 0.1); border: 1px solid #6366f1; border-radius: 12px; padding: 1.5rem; max-width: 500px; margin-left: auto; margin-right: auto;">
+                    <h3 style="color: #a5b4fc; margin-bottom: 0.75rem;">🧾 Your Vote Receipt</h3>
+                    <p style="color: var(--gray); font-size: 0.85rem; margin-bottom: 0.75rem;">
+                        Save this receipt token to verify your vote was counted on the public verification page.
+                    </p>
+                    <code
+                        style="background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: 8px; display: block; word-break: break-all; font-size: 0.8rem; color: #10b981;">
+                            <?= htmlspecialchars($_SESSION['vote_receipt']) ?>
+                        </code>
+                    <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
+                        <button
+                            onclick="navigator.clipboard.writeText('<?= htmlspecialchars($_SESSION['vote_receipt']) ?>').then(()=>this.textContent='✓ Copied!')"
+                            class="btn btn-secondary" style="font-size: 0.85rem;">
+                            📋 Copy Receipt
+                        </button>
+                        <a href="<?= BASE_URL ?>/pages/verify.php?receipt=<?= urlencode($_SESSION['vote_receipt']) ?>"
+                            class="btn btn-primary" style="font-size: 0.85rem;">
+                            🔍 Verify Vote
+                        </a>
+                    </div>
+                </div>
+            <?php endif; ?>
 
             <div style="margin-top: 2rem;">
                 <p style="color: var(--gray);">You may now safely logout.</p>

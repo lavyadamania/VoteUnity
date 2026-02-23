@@ -34,6 +34,9 @@ $voteDistribution = $pdo->query("
 
 // Check hash chain integrity
 $chainValid = verifyHashChain($pdo);
+
+// Compute Merkle root
+$merkleInfo = computeMerkleRoot($pdo);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -60,6 +63,7 @@ $chainValid = verifyHashChain($pdo);
                 <a href="system_audit.php" style="color: #a855f7;">🔍 System Audit</a>
             <?php endif; ?>
             <a href="manage_admins.php">👥 Admins</a>
+            <a href="audit_logs.php" style="color: #10b981;">📋 Audit Logs</a>
             <a href="tamper_demo.php" style="color: #f59e0b;">🎭 Demo</a>
             <a href="logout.php">Logout</a>
         </div>
@@ -75,8 +79,12 @@ $chainValid = verifyHashChain($pdo);
             </div>
             <div>
                 <span class="<?= $chainValid ? 'chain-valid' : 'chain-invalid' ?>" style="font-weight: 600;">
-                    <?= $chainValid ? '🔗 Hash Chain: Intact ✓' : '⚠️ Hash Chain: Broken!' ?>
+                    <?= $chainValid ? '🔗 Ledger: Intact ✓' : '⚠️ Ledger: Broken!' ?>
                 </span>
+                <br>
+                <small style="color: var(--gray);">
+                    🌳 Merkle: <code style="font-size: 0.7rem;"><?= substr($merkleInfo['root'], 0, 16) ?>...</code>
+                </small>
             </div>
         </div>
 

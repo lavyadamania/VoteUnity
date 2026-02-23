@@ -49,6 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_step']) && $_PO
                 }
             } else {
                 $errors[] = 'Invalid username or password';
+                logAuditEvent($pdo, AUDIT_LOGIN_FAIL, ACTOR_ADMIN, null, 'Failed admin login attempt for username: ' . $username);
             }
         }
     }
@@ -114,7 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_step']) && $_PO
                     $stmt->execute([$faceData, $admin['id']]);
                 } else {
                     $uploadsDir = dirname(dirname(__DIR__)) . '/uploads/';
-                    if (!is_dir($uploadsDir)) mkdir($uploadsDir, 0755, true);
+                    if (!is_dir($uploadsDir))
+                        mkdir($uploadsDir, 0755, true);
                     $faceImagePath = 'admin_' . $admin['id'] . '.jpg';
                     $imageData = explode(',', $faceData)[1];
                     file_put_contents($uploadsDir . $faceImagePath, base64_decode($imageData));
@@ -132,12 +134,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_step']) && $_PO
                     $_SESSION['admin_pending_username'] = $admin['username'];
                     unset($_SESSION['admin_login_step']);
                     unset($_SESSION['pending_admin_id']);
+
+                    // Issue JWT token
+                    $jwt = generateJWT([
+                        'user_id' => $admin['id'],
+                        'username' => $admin['username'],
+                        'role' => 'admin'
+                    ]);
+                    setJWTCookie($jwt);
+
+                    logAuditEvent($pdo, AUDIT_LOGIN, ACTOR_ADMIN, $admin['id'], 'Admin login successful (location pending): ' . $admin['username']);
                     redirect(BASE_URL . '/pages/admin/capture_location.php');
                 } else {
                     $_SESSION['admin_id'] = $admin['id'];
                     $_SESSION['admin_username'] = $admin['username'];
                     unset($_SESSION['admin_login_step']);
                     unset($_SESSION['pending_admin_id']);
+
+                    // Issue JWT token
+                    $jwt = generateJWT([
+                        'user_id' => $admin['id'],
+                        'username' => $admin['username'],
+                        'role' => 'super_admin'
+                    ]);
+                    setJWTCookie($jwt);
+
+                    logAuditEvent($pdo, AUDIT_LOGIN, ACTOR_ADMIN, $admin['id'], 'Super-admin login successful: ' . $admin['username']);
                     redirect(BASE_URL . '/pages/admin/dashboard.php');
                 }
             }
@@ -154,6 +176,7 @@ if (isset($_GET['cancel'])) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -161,6 +184,7 @@ if (isset($_GET['cancel'])) {
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <nav class="navbar">
         <div class="nav-brand">
@@ -193,15 +217,18 @@ if (isset($_GET['cancel'])) {
                         <input type="hidden" name="login_step" value="credentials">
                         <div class="form-group">
                             <label for="username">Username</label>
-                            <input type="text" id="username" name="username" class="form-control" placeholder="Enter admin username" required>
+                            <input type="text" id="username" name="username" class="form-control"
+                                placeholder="Enter admin username" required>
                         </div>
                         <div class="form-group">
                             <label for="password">Password</label>
-                            <input type="password" id="password" name="password" class="form-control" placeholder="Enter password" required>
+                            <input type="password" id="password" name="password" class="form-control"
+                                placeholder="Enter password" required>
                         </div>
                         <button type="submit" class="btn btn-primary btn-block">Next: Face Verification →</button>
                     </form>
-                    <div style="margin-top: 1.5rem; text-align: center; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <div
+                        style="margin-top: 1.5rem; text-align: center; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
                         <a href="register.php" class="btn btn-secondary btn-block">📝 Register as Admin</a>
                     </div>
 
@@ -227,17 +254,20 @@ if (isset($_GET['cancel'])) {
                         <input type="hidden" name="login_step" value="face">
                         <input type="hidden" id="faceData" name="faceData">
                         <div class="webcam-container">
-                            <video id="webcamVideo" class="webcam-preview" autoplay playsinline style="display: none;"></video>
+                            <video id="webcamVideo" class="webcam-preview" autoplay playsinline
+                                style="display: none;"></video>
                             <canvas id="webcamCanvas" style="display: none;"></canvas>
                             <div id="capturePreview"></div>
                             <div class="webcam-controls">
                                 <button type="button" id="startWebcam" class="btn btn-secondary">📷 Start Camera</button>
-                                <button type="button" id="capturePhoto" class="btn btn-primary hidden">📸 Capture Face</button>
+                                <button type="button" id="capturePhoto" class="btn btn-primary hidden">📸 Capture
+                                    Face</button>
                             </div>
                         </div>
                         <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
                             <a href="?cancel=1" class="btn btn-secondary" style="flex: 1;">← Back</a>
-                            <button type="submit" id="verifyBtn" class="btn btn-success" style="flex: 2;" disabled>✓ Verify & Login</button>
+                            <button type="submit" id="verifyBtn" class="btn btn-success" style="flex: 2;" disabled>✓ Verify
+                                & Login</button>
                         </div>
                     </form>
 
@@ -272,7 +302,7 @@ if (isset($_GET['cancel'])) {
                                 const imageData = canvas.toDataURL('image/jpeg', 0.8);
                                 faceDataInput.value = imageData;
                                 previewContainer.innerHTML = `<img src="${imageData}" style="max-width: 200px; border-radius: 8px; margin: 1rem auto; display: block;"><p style="color: #10b981; text-align: center;">✓ Captured!</p>`;
-                                if(stream) stream.getTracks().forEach(track => track.stop());
+                                if (stream) stream.getTracks().forEach(track => track.stop());
                                 video.style.display = 'none';
                                 captureBtn.classList.add('hidden');
                                 verifyBtn.disabled = false;
@@ -284,4 +314,5 @@ if (isset($_GET['cancel'])) {
         </div>
     </main>
 </body>
+
 </html>

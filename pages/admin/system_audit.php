@@ -112,6 +112,7 @@ $votes = $pdo->query("
             <a href="location_tracker.php">📍 Locations</a>
             <a href="system_audit.php" class="active" style="color: #a855f7;">🔍 System Audit</a>
             <a href="manage_admins.php">👥 Admins</a>
+            <a href="audit_logs.php" style="color: #10b981;">📋 Audit Logs</a>
             <a href="tamper_demo.php" style="color: #f59e0b;">🎭 Demo</a>
             <a href="logout.php">Logout</a>
         </div>

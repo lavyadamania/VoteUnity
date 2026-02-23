@@ -124,6 +124,7 @@ if ($pdo === null) {
         <div class="nav-links">
             <?php if (isLoggedIn()): ?>
                 <a href="<?= BASE_URL ?>/pages/vote.php" class="<?= $currentPage === 'vote' ? 'active' : '' ?>">🗳️ Vote</a>
+                <a href="<?= BASE_URL ?>/pages/verify.php" style="color: #a855f7;">🔍 Verify</a>
                 <a href="<?= BASE_URL ?>/pages/logout.php">🚪 Logout</a>
             <?php else: ?>
                 <a href="<?= BASE_URL ?>/pages/login.php" class="<?= $currentPage === 'login' ? 'active' : '' ?>">🔑
@@ -131,6 +132,7 @@ if ($pdo === null) {
                 <a href="<?= BASE_URL ?>/pages/register.php" class="<?= $currentPage === 'register' ? 'active' : '' ?>">📝
                     Register</a>
                 <a href="<?= BASE_URL ?>/pages/admin/login.php" style="color: #f6ad55;">🔐 Admin</a>
+                <a href="<?= BASE_URL ?>/pages/verify.php" style="color: #a855f7;">🔍 Verify</a>
             <?php endif; ?>
         </div>
     </nav>
