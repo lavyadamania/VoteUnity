@@ -1,6 +1,13 @@
 {
     "builds": [
         {
+            "src": "api/verify_face.py",
+            "use": "@vercel/python",
+            "config": {
+                "maxDuration": 60
+            }
+        },
+        {
             "src": "router.php",
             "use": "vercel-php@0.7.2",
             "config": {
@@ -26,6 +33,10 @@
         }
     ],
     "routes": [
+        {
+            "src": "/api/(.*)",
+            "dest": "/api/$1"
+        },
         {
             "src": "/css/(.*)",
             "dest": "/css/$1"

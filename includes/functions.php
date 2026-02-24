@@ -272,6 +272,13 @@ function compareFaces($img1Input, $img2Input)
  */
 function compareFacesArcFace($img1Input, $img2Input)
 {
+    // ── Vercel: call the Python ArcFace serverless API ──
+    $isVercel = getenv('VERCEL') || getenv('VERCEL_URL');
+    if ($isVercel) {
+        return compareFacesArcFaceAPI($img1Input, $img2Input);
+    }
+
+    // ── Local: Python subprocess (existing behavior) ──
     $pythonScript = dirname(__DIR__) . '/python/arcface_verify.py';
 
     if (!file_exists($pythonScript)) {
@@ -364,6 +371,55 @@ function compareFacesArcFace($img1Input, $img2Input)
     }
 
     return null;
+}
+
+/**
+ * Call the Vercel Python ArcFace API (/api/verify_face)
+ * Used on Vercel where Python subprocess is unavailable.
+ */
+function compareFacesArcFaceAPI($img1Input, $img2Input)
+{
+    $host = $_SERVER['HTTP_HOST'] ?? getenv('VERCEL_URL');
+    if (!$host) {
+        return null;
+    }
+
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $apiUrl = $protocol . '://' . $host . '/api/verify_face';
+
+    $postData = json_encode([
+        'image1' => $img1Input,
+        'image2' => $img2Input
+    ]);
+
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'POST',
+            'header' => "Content-Type: application/json\r\nContent-Length: " . strlen($postData) . "\r\n",
+            'content' => $postData,
+            'timeout' => 55
+        ],
+        'ssl' => [
+            'verify_peer' => false,
+            'verify_peer_name' => false
+        ]
+    ]);
+
+    $response = @file_get_contents($apiUrl, false, $context);
+
+    if ($response) {
+        $result = json_decode($response, true);
+        if ($result && isset($result['match'])) {
+            return [
+                'match' => (bool) $result['match'],
+                'score' => round(floatval($result['score']), 4),
+                'threshold' => floatval($result['threshold'] ?? 0.40),
+                'method' => 'arcface'
+            ];
+        }
+    }
+
+    return null; // Fall back to GD
 }
 
 /**
