@@ -85,6 +85,16 @@ $merkleInfo = computeMerkleRoot($pdo);
                 <small style="color: var(--gray);">
                     🌳 Merkle: <code style="font-size: 0.7rem;"><?= substr($merkleInfo['root'], 0, 16) ?>...</code>
                 </small>
+                <br>
+                <?php
+                $faceMethod = detectFaceRecognitionMethod();
+                $faceInfo = getFaceMethodInfo($faceMethod);
+                ?>
+                <span class="face-method-badge" style="color: <?= $faceInfo['color'] ?>; border-color: <?= $faceInfo['color'] ?>33; background: <?= $faceInfo['color'] ?>15; margin-top: 0.4rem;">
+                    <span class="method-icon"><?= $faceInfo['icon'] ?></span>
+                    <?= htmlspecialchars($faceInfo['label']) ?>
+                    <span class="method-tier"><?= htmlspecialchars($faceInfo['tier']) ?></span>
+                </span>
             </div>
         </div>
 

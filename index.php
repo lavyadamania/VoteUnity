@@ -47,6 +47,17 @@ require_once 'includes/header.php';
             <div class="feature-icon">👤</div>
             <h3>Face Recognition</h3>
             <p>Advanced biometric authentication using real-time webcam verification.</p>
+            <?php
+            $faceMethod = detectFaceRecognitionMethod();
+            $faceInfo = getFaceMethodInfo($faceMethod);
+            ?>
+            <div style="margin-top: 1rem;">
+                <span class="face-method-badge" style="color: <?= $faceInfo['color'] ?>; border-color: <?= $faceInfo['color'] ?>33; background: <?= $faceInfo['color'] ?>15;">
+                    <span class="method-icon"><?= $faceInfo['icon'] ?></span>
+                    <?= htmlspecialchars($faceInfo['label']) ?>
+                    <span class="method-tier"><?= htmlspecialchars($faceInfo['tier']) ?></span>
+                </span>
+            </div>
         </div>
 
         <div class="feature-card">

@@ -249,6 +249,86 @@ function validateEmail($email)
 }
 
 /**
+ * Detect which face recognition method is currently available.
+ * Returns: 'arcface_api', 'arcface_local', 'gd_strict', or 'fallback'
+ */
+function detectFaceRecognitionMethod()
+{
+    $isVercel = getenv('VERCEL') || getenv('VERCEL_URL');
+
+    if ($isVercel) {
+        return 'arcface_api';
+    }
+
+    // Check if local ArcFace Python script exists and python is available
+    $pythonScript = dirname(__DIR__) . '/python/arcface_verify.py';
+    if (file_exists($pythonScript)) {
+        foreach (['python3', 'python'] as $candidate) {
+            $check = @shell_exec($candidate . ' --version 2>&1');
+            if ($check && stripos($check, 'python') !== false) {
+                return 'arcface_local';
+            }
+        }
+    }
+
+    if (extension_loaded('gd')) {
+        return 'gd_strict';
+    }
+
+    return 'fallback';
+}
+
+/**
+ * Get a human-readable label, description, and color for a face recognition method.
+ */
+function getFaceMethodInfo($method = null)
+{
+    if ($method === null) {
+        $method = detectFaceRecognitionMethod();
+    }
+
+    $methods = [
+        'arcface' => [
+            'label' => 'ArcFace AI',
+            'description' => 'Deep learning face recognition (ArcFace neural network)',
+            'color' => '#10b981',
+            'icon' => '🧠',
+            'tier' => 'Premium'
+        ],
+        'arcface_api' => [
+            'label' => 'ArcFace AI (Cloud)',
+            'description' => 'Serverless ArcFace ONNX model via Vercel Python runtime',
+            'color' => '#10b981',
+            'icon' => '🧠',
+            'tier' => 'Premium'
+        ],
+        'arcface_local' => [
+            'label' => 'ArcFace AI (Local)',
+            'description' => 'ArcFace deep learning via local Python + DeepFace',
+            'color' => '#6366f1',
+            'icon' => '🧠',
+            'tier' => 'Premium'
+        ],
+        'gd_strict' => [
+            'label' => 'GD Pixel Analysis',
+            'description' => 'PHP GD pixel-diff grayscale comparison (64x64)',
+            'color' => '#f59e0b',
+            'icon' => '🔲',
+            'tier' => 'Basic'
+        ],
+        'fallback' => [
+            'label' => 'Bypass (No Engine)',
+            'description' => 'No face recognition engine available — verification bypassed',
+            'color' => '#ef4444',
+            'icon' => '⚠️',
+            'tier' => 'None'
+        ]
+    ];
+
+    return $methods[$method] ?? $methods['fallback'];
+}
+
+/**
  * Biometric similarity check — ArcFace with GD fallback
  *
  * Tries ArcFace deep-learning verification first (via Python subprocess).

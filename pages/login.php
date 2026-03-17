@@ -41,9 +41,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Vercel/PostgreSQL: face stored as base64 — strict comparison
                         $result = compareFaces($user['face_image'], $faceData);
                         $faceVerified = $result['match'];
+                        $methodInfo = getFaceMethodInfo($result['method'] ?? null);
                         if (!$faceVerified) {
                             $score = round($result['score'] * 100, 1);
-                            $errors[] = "Face verification failed! Your face does not match. (Score: {$score}%, Required: 60%)";
+                            $errors[] = "Face verification failed! Your face does not match. (Score: {$score}%, Required: 60%) [Engine: {$methodInfo['label']}]";
                         }
                     } else {
                         // Local: file-based comparison
@@ -54,10 +55,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $storedFacePath = dirname(__DIR__) . '/uploads/' . $user['face_image'];
                         $result = compareFaces($storedFacePath, $tempFacePath);
                         $faceVerified = $result['match'];
+                        $methodInfo = getFaceMethodInfo($result['method'] ?? null);
 
                         if (!$faceVerified) {
                             $score = round($result['score'] * 100, 1);
-                            $errors[] = "Face verification failed! Face does not match stored ID. (Score: {$score}%, Required: 60%)";
+                            $errors[] = "Face verification failed! Face does not match stored ID. (Score: {$score}%, Required: 60%) [Engine: {$methodInfo['label']}]";
                         }
 
                         // Clean up temp file
@@ -125,6 +127,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="form-group" id="faceVerifyContainer">
                 <label>Face Verification (Required if set)</label>
+                <?php
+                $faceMethod = detectFaceRecognitionMethod();
+                $faceInfo = getFaceMethodInfo($faceMethod);
+                ?>
+                <div class="face-method-box">
+                    <div>
+                        <div class="method-label">Face Recognition Engine</div>
+                        <div class="method-detail"><?= htmlspecialchars($faceInfo['description']) ?></div>
+                    </div>
+                    <span class="face-method-badge" style="color: <?= $faceInfo['color'] ?>; border-color: <?= $faceInfo['color'] ?>33; background: <?= $faceInfo['color'] ?>15;">
+                        <span class="method-icon"><?= $faceInfo['icon'] ?></span>
+                        <?= htmlspecialchars($faceInfo['label']) ?>
+                        <span class="method-tier"><?= htmlspecialchars($faceInfo['tier']) ?></span>
+                    </span>
+                </div>
                 <div class="webcam-container">
                     <video id="webcamVideo" class="webcam-preview hidden" autoplay playsinline></video>
                     <canvas id="webcamCanvas" style="display: none;"></canvas>

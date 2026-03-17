@@ -37,3 +37,7 @@ Fix_*.bat
 # Keep these folders
 !uploads/.gitkeep
 .vercel
+
+# Word / PDF reports (large binary — regenerate via generate_report.py)
+*.docx
+*.pdf

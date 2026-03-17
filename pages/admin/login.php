@@ -74,12 +74,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_step']) && $_PO
                 if (str_starts_with($admin['face_image'], 'data:')) {
                     // Vercel: face stored as base64 — strict comparison
                     $result = compareFaces($admin['face_image'], $faceData);
+                    $methodInfo = getFaceMethodInfo($result['method'] ?? null);
                     if ($result['match']) {
                         $faceVerified = true;
-                        $verificationMessage = "Face verified (" . round($result['score'] * 100, 1) . "%)";
+                        $verificationMessage = "Face verified (" . round($result['score'] * 100, 1) . "%) — Engine: " . $methodInfo['label'];
                     } else {
                         $score = round($result['score'] * 100, 1);
-                        $errors[] = "Face verification failed! Face does not match. (Score: {$score}%, Required: 60%)";
+                        $errors[] = "Face verification failed! Face does not match. (Score: {$score}%, Required: 60%) [Engine: {$methodInfo['label']}]";
                     }
                 } else {
                     // Local: file-based comparison
@@ -91,12 +92,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_step']) && $_PO
                     if (file_exists($uploadsDir . $admin['face_image'])) {
                         $storedFacePath = $uploadsDir . $admin['face_image'];
                         $result = compareFaces($storedFacePath, $tempFacePath);
+                        $methodInfo = getFaceMethodInfo($result['method'] ?? null);
 
                         if ($result['match']) {
                             $faceVerified = true;
                         } else {
                             $score = round($result['score'] * 100, 1);
-                            $errors[] = "Face verification failed! Face does not match. (Score: {$score}%, Required: 60%)";
+                            $errors[] = "Face verification failed! Face does not match. (Score: {$score}%, Required: 60%) [Engine: {$methodInfo['label']}]";
                         }
                     } else {
                         // Stored face file missing — save this as their face
@@ -245,6 +247,22 @@ if (isset($_GET['cancel'])) {
                             <?php endforeach; ?>
                         </div>
                     <?php endif; ?>
+
+                    <?php
+                    $faceMethod = detectFaceRecognitionMethod();
+                    $faceInfo = getFaceMethodInfo($faceMethod);
+                    ?>
+                    <div class="face-method-box">
+                        <div>
+                            <div class="method-label">Face Recognition Engine</div>
+                            <div class="method-detail"><?= htmlspecialchars($faceInfo['description']) ?></div>
+                        </div>
+                        <span class="face-method-badge" style="color: <?= $faceInfo['color'] ?>; border-color: <?= $faceInfo['color'] ?>33; background: <?= $faceInfo['color'] ?>15;">
+                            <span class="method-icon"><?= $faceInfo['icon'] ?></span>
+                            <?= htmlspecialchars($faceInfo['label']) ?>
+                            <span class="method-tier"><?= htmlspecialchars($faceInfo['tier']) ?></span>
+                        </span>
+                    </div>
 
                     <div class="alert alert-warning">
                         <strong>⚠️ Security:</strong> Strict biometric matching is enabled.

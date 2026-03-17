@@ -26,13 +26,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_face'])) {
         if (str_starts_with($user['face_image'], 'data:')) {
             // Vercel: face stored as base64 in DB — strict comparison
             $result = compareFaces($user['face_image'], $faceData);
+            $methodInfo = getFaceMethodInfo($result['method'] ?? null);
             if ($result['match']) {
                 $_SESSION['face_verified_for_vote'] = true;
                 $faceVerified = true;
-                setFlashMessage('success', 'Face verified successfully! (Score: ' . round($result['score'] * 100, 1) . '%) You can now cast your vote.');
+                setFlashMessage('success', 'Face verified successfully! (Score: ' . round($result['score'] * 100, 1) . '%) Engine: ' . $methodInfo['label'] . '. You can now cast your vote.');
             } else {
                 $score = round($result['score'] * 100, 1);
-                setFlashMessage('error', "Face verification failed! Your face does not match. (Score: {$score}%, Required: 60%)");
+                setFlashMessage('error', "Face verification failed! Your face does not match. (Score: {$score}%, Required: 60%) [Engine: {$methodInfo['label']}]");
             }
         } else {
             // Local: file-based comparison
@@ -45,15 +46,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_face'])) {
 
             if (file_exists($storedFacePath)) {
                 $result = compareFaces($storedFacePath, $tempFacePath);
+                $methodInfo = getFaceMethodInfo($result['method'] ?? null);
 
                 if ($result['match']) {
                     $_SESSION['face_verified_for_vote'] = true;
                     $faceVerified = true;
                     $score = round($result['score'] * 100, 1);
-                    setFlashMessage('success', "Face verified successfully! (Match score: {$score}%) You can now cast your vote.");
+                    setFlashMessage('success', "Face verified successfully! (Match score: {$score}%) Engine: {$methodInfo['label']}. You can now cast your vote.");
                 } else {
                     $score = round($result['score'] * 100, 1);
-                    setFlashMessage('error', "Face verification failed! Face does not match registered photo. (Score: {$score}%, Required: 60%)");
+                    setFlashMessage('error', "Face verification failed! Face does not match registered photo. (Score: {$score}%, Required: 60%) [Engine: {$methodInfo['label']}]");
                 }
             } else {
                 setFlashMessage('error', 'No registered face found on local system. Please contact admin.');
@@ -193,10 +195,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
 
             <div class="alert alert-info" style="text-align: left; max-width: 500px; margin: 0 auto;">
                 <strong>Vote Details:</strong><br>
+                <?php
+                $voteMethodInfo = getFaceMethodInfo(detectFaceRecognitionMethod());
+                ?>
                 <small>
                     • Voter ID: <?= htmlspecialchars($_SESSION['user_id']) ?><br>
                     • Status: Verified & Recorded<br>
                     • Face Verification: ✓ Passed<br>
+                    • Face Engine: <?= $voteMethodInfo['icon'] ?> <?= htmlspecialchars($voteMethodInfo['label']) ?><br>
                     • Encryption: 🔒 AES-256-GCM<br>
                     • Hash Chain: Intact ✓<br>
                     • Merkle Tree: Included ✓
@@ -239,6 +245,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
         <div class="card-header">
             <h2>👤 Face Verification Required</h2>
             <p>Please verify your identity before casting your vote</p>
+        </div>
+
+        <?php
+        $faceMethod = detectFaceRecognitionMethod();
+        $faceInfo = getFaceMethodInfo($faceMethod);
+        ?>
+        <div class="face-method-box">
+            <div>
+                <div class="method-label">Face Recognition Engine</div>
+                <div class="method-detail"><?= htmlspecialchars($faceInfo['description']) ?></div>
+            </div>
+            <span class="face-method-badge" style="color: <?= $faceInfo['color'] ?>; border-color: <?= $faceInfo['color'] ?>33; background: <?= $faceInfo['color'] ?>15;">
+                <span class="method-icon"><?= $faceInfo['icon'] ?></span>
+                <?= htmlspecialchars($faceInfo['label']) ?>
+                <span class="method-tier"><?= htmlspecialchars($faceInfo['tier']) ?></span>
+            </span>
         </div>
 
         <div class="alert alert-warning">
@@ -327,7 +349,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
         </div>
 
         <div class="alert alert-success">
-            <strong>✓ Face Verified!</strong> Your identity has been confirmed. You may now cast your vote.
+            <?php $castFaceInfo = getFaceMethodInfo(detectFaceRecognitionMethod()); ?>
+            <strong>✓ Face Verified!</strong> Your identity has been confirmed via <?= $castFaceInfo['icon'] ?> <?= htmlspecialchars($castFaceInfo['label']) ?>. You may now cast your vote.
         </div>
 
         <div class="alert alert-warning">

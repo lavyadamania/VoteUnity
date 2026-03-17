@@ -1077,6 +1077,58 @@ tr:hover {
     opacity: 0.5;
 }
 
+/* Face Recognition Method Badge */
+.face-method-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1rem;
+    border-radius: 50px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    border: 1px solid;
+}
+
+.face-method-badge .method-icon {
+    font-size: 1rem;
+}
+
+.face-method-badge .method-tier {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 0.1rem 0.5rem;
+    border-radius: 50px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.face-method-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.face-method-box .method-label {
+    color: var(--gray);
+    font-size: 0.85rem;
+}
+
+.face-method-box .method-detail {
+    font-size: 0.75rem;
+    color: var(--gray);
+    opacity: 0.7;
+    margin-top: 0.25rem;
+}
+
 /* Divider */
 .divider {
     height: 1px;

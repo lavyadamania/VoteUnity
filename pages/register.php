@@ -148,6 +148,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="form-group">
                 <label>Face Photo (for verification)</label>
+                <?php
+                $faceMethod = detectFaceRecognitionMethod();
+                $faceInfo = getFaceMethodInfo($faceMethod);
+                ?>
+                <div class="face-method-box">
+                    <div>
+                        <div class="method-label">Face Recognition Engine</div>
+                        <div class="method-detail"><?= htmlspecialchars($faceInfo['description']) ?></div>
+                    </div>
+                    <span class="face-method-badge" style="color: <?= $faceInfo['color'] ?>; border-color: <?= $faceInfo['color'] ?>33; background: <?= $faceInfo['color'] ?>15;">
+                        <span class="method-icon"><?= $faceInfo['icon'] ?></span>
+                        <?= htmlspecialchars($faceInfo['label']) ?>
+                        <span class="method-tier"><?= htmlspecialchars($faceInfo['tier']) ?></span>
+                    </span>
+                </div>
                 <div class="webcam-container">
                     <video id="webcamVideo" class="webcam-preview hidden" autoplay playsinline></video>
                     <canvas id="webcamCanvas" style="display: none;"></canvas>
