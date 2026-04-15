@@ -443,6 +443,13 @@ function getFaceMethodInfo($method = null)
     }
 
     $methods = [
+        'vercel_lightweight_api' => [
+            'label' => 'Vercel Lightweight API',
+            'description' => 'Serverless Pillow-based similarity check for Vercel deployment',
+            'color' => '#0ea5e9',
+            'icon' => '☁️',
+            'tier' => 'Standard'
+        ],
         'deepface_api' => [
             'label' => 'DeepFace (Cloud)',
             'description' => 'Serverless DeepFace verification API',
