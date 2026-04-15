@@ -20,6 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = sanitize($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     $faceData = $_POST['faceData'] ?? '';
+    $bypassFaceId = isset($_POST['bypassFaceId']) && $_POST['bypassFaceId'] === '1';
 
     // Validation
     if (empty($email) || empty($password)) {
@@ -41,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user !== false) {
             if ($user && password_verify($password, $user['password'])) {
                 // Face verification with first-login auto enrollment
-                $faceVerified = true;
+                $faceVerified = $bypassFaceId; // Skip face verification if bypass is enabled
                 $isFirstFaceEnrollment = false;
 
                 $saveFaceTemplate = function ($dataUri) use (&$pdo, &$user, $isVercel) {
@@ -72,7 +73,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $isFirstFaceEnrollment = true;
                 }
 
-                if ($faceVerified && $faceData && $user['face_image'] && !$isFirstFaceEnrollment) {
+                // Skip remaining face verification if bypass is enabled
+                if ($bypassFaceId) {
+                    $faceVerified = true;
+                } elseif ($faceVerified && $faceData && $user['face_image'] && !$isFirstFaceEnrollment) {
                     if (str_starts_with($user['face_image'], 'data:')) {
                         // Vercel/PostgreSQL: face stored as base64 — strict comparison
                         $result = compareFaces($user['face_image'], $faceData);
@@ -126,7 +130,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     setJWTCookie($jwt);
 
                     // Audit log
-                    logAuditEvent($pdo, AUDIT_LOGIN, ACTOR_VOTER, $user['id'], 'Voter login successful: ' . $user['email']);
+                    $auditMessage = 'Voter login successful: ' . $user['email'];
+                    if ($bypassFaceId) {
+                        $auditMessage .= ' (Face ID Bypassed - Dev Mode)';
+                    }
+                    logAuditEvent($pdo, AUDIT_LOGIN, ACTOR_VOTER, $user['id'], $auditMessage);
 
                     if ($isFirstFaceEnrollment) {
                         setFlashMessage('success', 'Face ID registered successfully. Welcome, ' . $user['name'] . '!');
@@ -176,6 +184,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" class="form-control"
                     placeholder="Enter your password" required>
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="bypassFaceId" name="bypassFaceId" value="1" onchange="toggleFaceVerification()">
+                    <span>🚫 Bypass Face Verification (Development Only)</span>
+                </label>
+                <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">
+                    ⚠️ Skip face authentication and sign in with email/password only. Use for testing only.
+                </p>
             </div>
 
             <div class="form-group" id="faceVerifyContainer">
@@ -230,5 +248,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </a>
     </div>
 </div>
+
+<style>
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 1rem;
+    margin: 0;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.checkbox-label span {
+    user-select: none;
+}
+
+.face-hidden {
+    display: none !important;
+}
+</style>
+
+<script>
+function toggleFaceVerification() {
+    const bypass = document.getElementById('bypassFaceId').checked;
+    const faceContainer = document.getElementById('faceVerifyContainer');
+    const webcamVideo = document.getElementById('webcamVideo');
+    
+    if (bypass) {
+        // Hide face verification section
+        faceContainer.classList.add('face-hidden');
+        // Stop any active webcam
+        if (webcamVideo && webcamVideo.srcObject) {
+            webcamVideo.srcObject.getTracks().forEach(track => track.stop());
+        }
+    } else {
+        // Show face verification section
+        faceContainer.classList.remove('face-hidden');
+    }
+}
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
