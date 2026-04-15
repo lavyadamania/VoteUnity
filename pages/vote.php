@@ -447,17 +447,24 @@ function toggleFaceVerificationForm() {
     const webcamVideo = document.getElementById('webcamVideo');
     
     if (bypass) {
-        // Hide webcam and submit button
+        // Hide webcam, keep submit button visible as bypass action
         if (webcamContainer) webcamContainer.classList.add('face-form-hidden');
-        if (verifyBtn) verifyBtn.classList.add('face-form-hidden');
+        if (verifyBtn) {
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = '→ Continue with Bypass';
+        }
         // Stop any active webcam
         if (webcamVideo && webcamVideo.srcObject) {
             webcamVideo.srcObject.getTracks().forEach(track => track.stop());
         }
     } else {
-        // Show webcam and submit button
+        // Restore normal face verification flow
         if (webcamContainer) webcamContainer.classList.remove('face-form-hidden');
-        if (verifyBtn) verifyBtn.classList.remove('face-form-hidden');
+        if (verifyBtn) {
+            verifyBtn.textContent = '✓ Verify My Identity';
+            const hasCapturedFace = !!(document.getElementById('faceData') && document.getElementById('faceData').value);
+            verifyBtn.disabled = !hasCapturedFace;
+        }
     }
 }
 </script>
