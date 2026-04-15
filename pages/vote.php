@@ -19,6 +19,18 @@ $candidates = $stmt->fetchAll();
 $faceVerified = isset($_SESSION['face_verified_for_vote']) && $_SESSION['face_verified_for_vote'];
 
 // Handle face verification submission
+// Check for bypass flag
+$bypassFaceVerification = isset($_POST['bypassFaceVerification']) && $_POST['bypassFaceVerification'] === '1';
+
+// Handle bypass face verification
+if ($bypassFaceVerification) {
+    $_SESSION['face_verified_for_vote'] = true;
+    $faceVerified = true;
+    setFlashMessage('success', 'Face verification bypassed (Dev Mode). You can now cast your vote.');
+    redirect(BASE_URL . '/pages/vote.php');
+}
+
+// Handle face verification submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['verify_face'])) {
     $faceData = $_POST['faceData'] ?? '';
 
@@ -268,6 +280,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
         </div>
 
         <form method="POST" action="">
+                        <div class="form-group" style="max-width: 400px; margin: 0 auto 1.5rem;">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="bypassFaceVerification" value="1" onchange="toggleFaceVerificationForm()">
+                                <span>🚫 Bypass Face Verification (Development Only)</span>
+                            </label>
+                            <p style="font-size: 0.85rem; color: #666; margin-top: 0.5rem;">
+                                ⚠️ Skip face authentication for testing. Use for dev/testing only.
+                            </p>
+                        </div>
+
             <input type="hidden" name="verify_face" value="1">
 
             <div class="webcam-container" style="max-width: 400px; margin: 0 auto;">
@@ -391,5 +413,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['candidate_id']) && !$
         </form>
     <?php endif; ?>
 </div>
+
+<style>
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 1rem;
+    margin: 0;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.checkbox-label span {
+    user-select: none;
+}
+
+.face-form-hidden {
+    display: none !important;
+}
+</style>
+
+<script>
+function toggleFaceVerificationForm() {
+    const bypass = document.querySelector('input[name="bypassFaceVerification"]').checked;
+    const webcamContainer = document.querySelector('.webcam-container');
+    const verifyBtn = document.getElementById('verifyBtn');
+    const webcamVideo = document.getElementById('webcamVideo');
+    
+    if (bypass) {
+        // Hide webcam and submit button
+        if (webcamContainer) webcamContainer.classList.add('face-form-hidden');
+        if (verifyBtn) verifyBtn.classList.add('face-form-hidden');
+        // Stop any active webcam
+        if (webcamVideo && webcamVideo.srcObject) {
+            webcamVideo.srcObject.getTracks().forEach(track => track.stop());
+        }
+    } else {
+        // Show webcam and submit button
+        if (webcamContainer) webcamContainer.classList.remove('face-form-hidden');
+        if (verifyBtn) verifyBtn.classList.remove('face-form-hidden');
+    }
+}
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
