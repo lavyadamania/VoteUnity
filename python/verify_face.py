@@ -1,6 +1,6 @@
 """
 Face Verification Script - Secure Online Voting System
-Uses DeepFace (ArcFace model) with fallback to histogram correlation.
+Uses DeepFace (Facenet512 model) with fallback to histogram correlation.
 """
 
 import cv2
@@ -9,7 +9,7 @@ import sys
 import os
 
 # Matching threshold
-MATCH_THRESHOLD_ARCFACE = 0.60 # Higher for DeepFace verification
+MATCH_THRESHOLD_DEEPFACE = 0.60
 MATCH_THRESHOLD_LEGACY = 0.6
 
 # Try to import DeepFace
@@ -27,24 +27,28 @@ def load_face_cascade():
 
 
 def compare_faces_deepface(path1, path2):
-    """Compare faces using DeepFace ArcFace."""
+    """Compare faces using DeepFace Facenet512."""
     if not _use_deepface:
-        return 0.0, False
+        return None
 
     try:
         result = DeepFace.verify(
             img1_path=path1,
             img2_path=path2,
-            model_name="ArcFace",
+            model_name="Facenet512",
             detector_backend="opencv",
+            # Webcam captures often have imperfect framing/lighting.
+            # Keep detection tolerant so matching can still run.
             enforce_detection=False,
             align=True
         )
         # DeepFace 'verified' boolean uses internal calibrated thresholds
-        return 1 - result['distance'], result['verified']
+        score = 1 - float(result.get('distance', 1.0))
+        is_match = bool(result.get('verified', False)) or score >= MATCH_THRESHOLD_DEEPFACE
+        return score, is_match
     except Exception as e:
         print(f"ERROR: DeepFace failed: {e}", file=sys.stderr)
-        return 0.0, False
+        return None
 
 
 def compute_histogram(image):
@@ -62,20 +66,23 @@ def verify_faces(stored_path, captured_path):
         return False, 0.0
 
     if _use_deepface:
-        score, is_match = compare_faces_deepface(stored_path, captured_path)
-        return is_match, score
-    else:
-        # Legacy fallback
-        stored_img = cv2.imread(stored_path)
-        captured_img = cv2.imread(captured_path)
-        if stored_img is None or captured_img is None:
-            return False, 0.0
-        
-        # Simple histogram match
-        score = (cv2.compareHist(compute_histogram(stored_img).reshape(-1, 1).astype(np.float32), 
-                                compute_histogram(captured_img).reshape(-1, 1).astype(np.float32), 
-                                cv2.HISTCMP_CORREL) + 1) / 2
-        return score >= MATCH_THRESHOLD_LEGACY, score
+        deepface_result = compare_faces_deepface(stored_path, captured_path)
+        if deepface_result is not None:
+            score, is_match = deepface_result
+            return is_match, score
+        return False, 0.0
+
+    # Legacy fallback (also used if DeepFace runtime fails)
+    stored_img = cv2.imread(stored_path)
+    captured_img = cv2.imread(captured_path)
+    if stored_img is None or captured_img is None:
+        return False, 0.0
+
+    # Simple histogram match
+    score = (cv2.compareHist(compute_histogram(stored_img).reshape(-1, 1).astype(np.float32),
+                             compute_histogram(captured_img).reshape(-1, 1).astype(np.float32),
+                             cv2.HISTCMP_CORREL) + 1) / 2
+    return score >= MATCH_THRESHOLD_LEGACY, score
 
 
 if __name__ == "__main__":

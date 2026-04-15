@@ -107,9 +107,48 @@ function requireDb($pdo, $db_error = null)
 /**
  * Check if user is logged in
  */
+function hydrateAuthSessionFromJWT()
+{
+    $payload = isJWTValid();
+
+    if (!$payload || !isset($payload['user_id'], $payload['role'])) {
+        return false;
+    }
+
+    if ($payload['role'] === 'voter') {
+        if (!isset($_SESSION['user_id'])) {
+            $_SESSION['user_id'] = $payload['user_id'];
+        }
+
+        if (isset($payload['email']) && !isset($_SESSION['user_email'])) {
+            $_SESSION['user_email'] = $payload['email'];
+        }
+
+        return true;
+    }
+
+    if ($payload['role'] === 'admin' || $payload['role'] === 'super_admin') {
+        if (!isset($_SESSION['admin_id'])) {
+            $_SESSION['admin_id'] = $payload['user_id'];
+        }
+
+        if (isset($payload['username']) && !isset($_SESSION['admin_username'])) {
+            $_SESSION['admin_username'] = $payload['username'];
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
 function isLoggedIn()
 {
-    return isset($_SESSION['user_id']);
+    if (isset($_SESSION['user_id'])) {
+        return true;
+    }
+
+    return hydrateAuthSessionFromJWT() && isset($_SESSION['user_id']);
 }
 
 /**
@@ -117,7 +156,15 @@ function isLoggedIn()
  */
 function isAdminLoggedIn()
 {
-    return isset($_SESSION['admin_id']);
+    if (isset($_SESSION['admin_id'])) {
+        return true;
+    }
+
+    if (isset($_SESSION['admin_requires_location']) && !isset($_SESSION['admin_id'])) {
+        return false;
+    }
+
+    return hydrateAuthSessionFromJWT() && isset($_SESSION['admin_id']);
 }
 
 /**
@@ -250,25 +297,47 @@ function validateEmail($email)
 
 /**
  * Detect which face recognition method is currently available.
- * Returns: 'arcface_api', 'arcface_local', 'gd_strict', or 'fallback'
+ * Returns: 'deepface_api', 'deepface_local', 'gd_strict', or 'fallback'
  */
+function getAvailablePythonBin()
+{
+    $root = dirname(__DIR__);
+    $candidates = [
+        $root . '/.venv/Scripts/python.exe',
+        $root . '/.venv/bin/python3',
+        'python3',
+        'python'
+    ];
+
+    foreach ($candidates as $candidate) {
+        if ((str_contains($candidate, '/') || str_contains($candidate, '\\')) && !file_exists($candidate)) {
+            continue;
+        }
+
+        $check = @shell_exec(escapeshellarg($candidate) . ' --version 2>&1');
+        if ($check && stripos($check, 'python') !== false) {
+            return $candidate;
+        }
+    }
+
+    return null;
+}
+
 function detectFaceRecognitionMethod()
 {
     $isVercel = getenv('VERCEL') || getenv('VERCEL_URL');
 
     if ($isVercel) {
-        return 'arcface_api';
+        return 'deepface_api';
     }
 
-    // Check if local ArcFace Python script exists and python is available
-    $pythonScript = dirname(__DIR__) . '/python/arcface_verify.py';
-    if (file_exists($pythonScript)) {
-        foreach (['python3', 'python'] as $candidate) {
-            $check = @shell_exec($candidate . ' --version 2>&1');
-            if ($check && stripos($check, 'python') !== false) {
-                return 'arcface_local';
-            }
-        }
+    // Check if local Python face script exists and python is available
+    $pythonScript = dirname(__DIR__) . '/python/verify_face.py';
+    $pythonBin = getAvailablePythonBin();
+    $hasPython = $pythonBin !== null;
+
+    if ($hasPython && file_exists($pythonScript)) {
+        return 'deepface_local';
     }
 
     if (extension_loaded('gd')) {
@@ -276,6 +345,92 @@ function detectFaceRecognitionMethod()
     }
 
     return 'fallback';
+}
+
+/**
+ * Compare faces via local DeepFace pipeline
+ * (with histogram fallback inside python/verify_face.py).
+ * Returns null if script/python is unavailable.
+ */
+function compareFacesDeepFaceLocal($img1Input, $img2Input)
+{
+    $pythonScript = dirname(__DIR__) . '/python/verify_face.py';
+
+    if (!file_exists($pythonScript)) {
+        return null;
+    }
+
+    $pythonBin = getAvailablePythonBin();
+    if (!$pythonBin) {
+        return null;
+    }
+
+    $tempFiles = [];
+
+    $prepareInput = function ($input) use (&$tempFiles) {
+        if (str_starts_with($input, 'data:')) {
+            $data = explode(',', $input, 2)[1];
+            $tempPath = sys_get_temp_dir() . '/freeface_' . bin2hex(random_bytes(8)) . '.jpg';
+            file_put_contents($tempPath, base64_decode($data));
+            $tempFiles[] = $tempPath;
+            return $tempPath;
+        }
+        return $input;
+    };
+
+    $path1 = $prepareInput($img1Input);
+    $path2 = $prepareInput($img2Input);
+
+    $cmd = escapeshellarg($pythonBin) . ' '
+        . escapeshellarg($pythonScript) . ' '
+        . escapeshellarg($path1) . ' '
+        . escapeshellarg($path2) . ' 2>&1';
+
+    $output = @shell_exec($cmd);
+
+    foreach ($tempFiles as $tf) {
+        @unlink($tf);
+    }
+
+    if (!$output) {
+        return null;
+    }
+
+    $lines = explode("\n", trim($output));
+    $resultLine = null;
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if (str_starts_with($line, 'MATCH:') || str_starts_with($line, 'NO_MATCH:')) {
+            $resultLine = $line;
+            break;
+        }
+    }
+
+    if (!$resultLine) {
+        return null;
+    }
+
+    if (str_starts_with($resultLine, 'MATCH:')) {
+        $score = floatval(substr($resultLine, 6));
+        return [
+            'match' => true,
+            'score' => round($score, 4),
+            'threshold' => 0.60,
+            'method' => 'deepface_local'
+        ];
+    }
+
+    if (str_starts_with($resultLine, 'NO_MATCH:')) {
+        $score = floatval(substr($resultLine, 9));
+        return [
+            'match' => false,
+            'score' => round($score, 4),
+            'threshold' => 0.60,
+            'method' => 'deepface_local'
+        ];
+    }
+
+    return null;
 }
 
 /**
@@ -288,26 +443,55 @@ function getFaceMethodInfo($method = null)
     }
 
     $methods = [
+        'deepface_api' => [
+            'label' => 'DeepFace (Cloud)',
+            'description' => 'Serverless DeepFace verification API',
+            'color' => '#10b981',
+            'icon' => '🧠',
+            'tier' => 'Premium'
+        ],
+        'deepface_local' => [
+            'label' => 'DeepFace (Local)',
+            'description' => 'Local DeepFace verification with OpenCV fallback',
+            'color' => '#6366f1',
+            'icon' => '🧠',
+            'tier' => 'Premium'
+        ],
+        'deepface_fallback' => [
+            'label' => 'DeepFace Fallback (Free)',
+            'description' => 'Free perceptual matcher used when DeepFace model fails',
+            'color' => '#06b6d4',
+            'icon' => '🆓',
+            'tier' => 'Standard'
+        ],
+        // Backward compatibility for previously stored method names
         'arcface' => [
-            'label' => 'ArcFace AI',
-            'description' => 'Deep learning face recognition (ArcFace neural network)',
+            'label' => 'DeepFace (Legacy Label)',
+            'description' => 'Legacy ArcFace label mapped to DeepFace',
             'color' => '#10b981',
             'icon' => '🧠',
             'tier' => 'Premium'
         ],
         'arcface_api' => [
-            'label' => 'ArcFace AI (Cloud)',
-            'description' => 'Serverless ArcFace ONNX model via Vercel Python runtime',
+            'label' => 'DeepFace (Legacy Cloud)',
+            'description' => 'Legacy ArcFace cloud label mapped to DeepFace',
             'color' => '#10b981',
             'icon' => '🧠',
             'tier' => 'Premium'
         ],
         'arcface_local' => [
-            'label' => 'ArcFace AI (Local)',
-            'description' => 'ArcFace deep learning via local Python + DeepFace',
+            'label' => 'DeepFace (Legacy Local)',
+            'description' => 'Legacy ArcFace local label mapped to DeepFace',
             'color' => '#6366f1',
             'icon' => '🧠',
             'tier' => 'Premium'
+        ],
+        'ahash_fallback' => [
+            'label' => 'DeepFace Fallback (Legacy)',
+            'description' => 'Legacy fallback label mapped to DeepFace fallback',
+            'color' => '#06b6d4',
+            'icon' => '🆓',
+            'tier' => 'Standard'
         ],
         'gd_strict' => [
             'label' => 'GD Pixel Analysis',
@@ -329,135 +513,56 @@ function getFaceMethodInfo($method = null)
 }
 
 /**
- * Biometric similarity check — ArcFace with GD fallback
+ * Biometric similarity check — DeepFace first, GD fallback
  *
- * Tries ArcFace deep-learning verification first (via Python subprocess).
- * Falls back to GD pixel-diff if Python/InsightFace is unavailable.
+ * Tries DeepFace cloud API on Vercel, or local DeepFace on non-Vercel.
+ * Falls back to GD pixel-diff if Python/API is unavailable.
  */
 function compareFaces($img1Input, $img2Input)
 {
-    // Try ArcFace first
-    $arcfaceResult = compareFacesArcFace($img1Input, $img2Input);
-    if ($arcfaceResult !== null) {
-        return $arcfaceResult;
+    // Try DeepFace first
+    $deepfaceResult = compareFacesDeepFace($img1Input, $img2Input);
+    if ($deepfaceResult !== null) {
+        return $deepfaceResult;
     }
 
-    // Fallback to GD pixel-diff
-    return compareFacesGD($img1Input, $img2Input);
+    // Security-first default: do not auto-pass when DeepFace is unavailable.
+    // Enable GD fallback explicitly only for offline/dev diagnostics.
+    $allowGdFallback = (bool) (getenv('ALLOW_GD_FALLBACK') ?: false);
+    if ($allowGdFallback) {
+        return compareFacesGD($img1Input, $img2Input);
+    }
+
+    return [
+        'match' => false,
+        'score' => 0,
+        'threshold' => 0.60,
+        'method' => 'fallback',
+        'error' => 'DeepFace engine unavailable'
+    ];
 }
 
 /**
- * ArcFace-based face comparison via Python subprocess.
- * Returns null if Python/InsightFace is not available (triggering GD fallback).
+ * DeepFace comparison wrapper:
+ * - Vercel: calls Python serverless API
+ * - Local: runs python/verify_face.py
  */
-function compareFacesArcFace($img1Input, $img2Input)
+function compareFacesDeepFace($img1Input, $img2Input)
 {
-    // ── Vercel: call the Python ArcFace serverless API ──
+    // ── Vercel: call the Python DeepFace serverless API ──
     $isVercel = getenv('VERCEL') || getenv('VERCEL_URL');
     if ($isVercel) {
-        return compareFacesArcFaceAPI($img1Input, $img2Input);
+        return compareFacesDeepFaceAPI($img1Input, $img2Input);
     }
 
-    // ── Local: Python subprocess (existing behavior) ──
-    $pythonScript = dirname(__DIR__) . '/python/arcface_verify.py';
-
-    if (!file_exists($pythonScript)) {
-        return null;
-    }
-
-    // Detect python executable
-    $pythonBin = null;
-    foreach (['python3', 'python'] as $candidate) {
-        $check = @shell_exec($candidate . ' --version 2>&1');
-        if ($check && stripos($check, 'python') !== false) {
-            $pythonBin = $candidate;
-            break;
-        }
-    }
-    if (!$pythonBin) {
-        return null;
-    }
-
-    // Write images to temp files if they are base64 data URLs
-    $tempFiles = [];
-
-    $prepareInput = function ($input) use (&$tempFiles) {
-        if (str_starts_with($input, 'data:')) {
-            $data = explode(',', $input, 2)[1];
-            $tempPath = sys_get_temp_dir() . '/arcface_' . bin2hex(random_bytes(8)) . '.jpg';
-            file_put_contents($tempPath, base64_decode($data));
-            $tempFiles[] = $tempPath;
-            return $tempPath;
-        }
-        return $input;
-    };
-
-    $path1 = $prepareInput($img1Input);
-    $path2 = $prepareInput($img2Input);
-
-    // Build and execute command
-    $cmd = escapeshellarg($pythonBin) . ' '
-        . escapeshellarg($pythonScript) . ' '
-        . escapeshellarg($path1) . ' '
-        . escapeshellarg($path2) . ' 2>&1';
-
-    $output = @shell_exec($cmd);
-
-    // Clean up temp files
-    foreach ($tempFiles as $tf) {
-        @unlink($tf);
-    }
-
-    if (!$output) {
-        return null;
-    }
-
-    // Parse output: "MATCH:<score>" or "NO_MATCH:<score>"
-    $output = trim($output);
-
-    // Find the MATCH or NO_MATCH line (ignore warnings/info on stderr)
-    $lines = explode("\n", $output);
-    $resultLine = null;
-    foreach ($lines as $line) {
-        $line = trim($line);
-        if (str_starts_with($line, 'MATCH:') || str_starts_with($line, 'NO_MATCH:')) {
-            $resultLine = $line;
-            break;
-        }
-    }
-
-    if (!$resultLine) {
-        return null; // Could not parse output — fall back to GD
-    }
-
-    if (str_starts_with($resultLine, 'MATCH:')) {
-        $score = floatval(substr($resultLine, 6));
-        return [
-            'match' => true,
-            'score' => round($score, 4),
-            'threshold' => 0.60,
-            'method' => 'arcface'
-        ];
-    }
-
-    if (str_starts_with($resultLine, 'NO_MATCH:')) {
-        $score = floatval(substr($resultLine, 9));
-        return [
-            'match' => false,
-            'score' => round($score, 4),
-            'threshold' => 0.60,
-            'method' => 'arcface'
-        ];
-    }
-
-    return null;
+    // ── Local: Python DeepFace subprocess ──
+    return compareFacesDeepFaceLocal($img1Input, $img2Input);
 }
 
 /**
- * Call the Vercel Python ArcFace API (/api/verify_face)
- * Used on Vercel where Python subprocess is unavailable.
+ * Call the Vercel Python DeepFace API (/api/verify_face)
  */
-function compareFacesArcFaceAPI($img1Input, $img2Input)
+function compareFacesDeepFaceAPI($img1Input, $img2Input)
 {
     $host = $_SERVER['HTTP_HOST'] ?? getenv('VERCEL_URL');
     if (!$host) {
@@ -466,6 +571,7 @@ function compareFacesArcFaceAPI($img1Input, $img2Input)
 
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
     $apiUrl = $protocol . '://' . $host . '/api/verify_face';
+
 
     $postData = json_encode([
         'image1' => $img1Input,
@@ -494,7 +600,7 @@ function compareFacesArcFaceAPI($img1Input, $img2Input)
                 'match' => (bool) $result['match'],
                 'score' => round(floatval($result['score']), 4),
                 'threshold' => floatval($result['threshold'] ?? 0.40),
-                'method' => 'arcface'
+                'method' => $result['method'] ?? 'deepface_api'
             ];
         }
     }
@@ -509,7 +615,13 @@ function compareFacesArcFaceAPI($img1Input, $img2Input)
 function compareFacesGD($img1Input, $img2Input)
 {
     if (!extension_loaded('gd')) {
-        return ['match' => true, 'score' => 0.85, 'method' => 'fallback'];
+        return [
+            'match' => false,
+            'score' => 0,
+            'threshold' => 0.60,
+            'method' => 'fallback',
+            'error' => 'GD extension is not available'
+        ];
     }
 
     $img1 = null;

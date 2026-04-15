@@ -8,6 +8,13 @@ if (isLoggedIn()) {
 
 $errors = [];
 
+// First-run guard: if no voter exists, route user to registration instead of looping on login.
+$hasAnyVoter = (int) $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn() > 0;
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && !$hasAnyVoter) {
+    setFlashMessage('error', 'No voter account exists yet. Please register first.');
+    redirect(BASE_URL . '/pages/register.php');
+}
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = sanitize($_POST['email'] ?? '');
@@ -33,10 +40,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Only check login if database query succeeded
         if ($user !== false) {
             if ($user && password_verify($password, $user['password'])) {
-                // Face verification
+                // Face verification with first-login auto enrollment
                 $faceVerified = true;
+                $isFirstFaceEnrollment = false;
 
-                if ($faceData && $user['face_image']) {
+                $saveFaceTemplate = function ($dataUri) use (&$pdo, &$user, $isVercel) {
+                    if ($isVercel) {
+                        $faceImagePath = $dataUri;
+                    } else {
+                        $uploadsDir = dirname(__DIR__) . '/uploads/faces/';
+                        if (!is_dir($uploadsDir)) {
+                            mkdir($uploadsDir, 0755, true);
+                        }
+                        $faceImagePath = 'faces/user_' . $user['id'] . '_faceid.jpg';
+                        $imageData = explode(',', $dataUri, 2)[1] ?? '';
+                        file_put_contents(dirname(__DIR__) . '/uploads/' . $faceImagePath, base64_decode($imageData));
+                    }
+
+                    $stmt = $pdo->prepare("UPDATE users SET face_image = ? WHERE id = ?");
+                    $stmt->execute([$faceImagePath, $user['id']]);
+                    $user['face_image'] = $faceImagePath;
+                };
+
+                if (empty($faceData)) {
+                    $errors[] = 'Face capture is required for login verification.';
+                    $faceVerified = false;
+                }
+
+                if ($faceVerified && !$user['face_image']) {
+                    $saveFaceTemplate($faceData);
+                    $isFirstFaceEnrollment = true;
+                }
+
+                if ($faceVerified && $faceData && $user['face_image'] && !$isFirstFaceEnrollment) {
                     if (str_starts_with($user['face_image'], 'data:')) {
                         // Vercel/PostgreSQL: face stored as base64 — strict comparison
                         $result = compareFaces($user['face_image'], $faceData);
@@ -49,17 +85,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         // Local: file-based comparison
                         $tempFacePath = dirname(__DIR__) . '/uploads/temp_login_' . $user['id'] . '.jpg';
-                        $imageData = explode(',', $faceData)[1];
+                        $imageData = explode(',', $faceData, 2)[1] ?? '';
                         file_put_contents($tempFacePath, base64_decode($imageData));
 
                         $storedFacePath = dirname(__DIR__) . '/uploads/' . $user['face_image'];
-                        $result = compareFaces($storedFacePath, $tempFacePath);
-                        $faceVerified = $result['match'];
-                        $methodInfo = getFaceMethodInfo($result['method'] ?? null);
 
-                        if (!$faceVerified) {
-                            $score = round($result['score'] * 100, 1);
-                            $errors[] = "Face verification failed! Face does not match stored ID. (Score: {$score}%, Required: 60%) [Engine: {$methodInfo['label']}]";
+                        if (!file_exists($storedFacePath)) {
+                            // Missing local template: treat as first-time enrollment
+                            $saveFaceTemplate($faceData);
+                            $isFirstFaceEnrollment = true;
+                        } else {
+                            $result = compareFaces($storedFacePath, $tempFacePath);
+                            $faceVerified = $result['match'];
+                            $methodInfo = getFaceMethodInfo($result['method'] ?? null);
+
+                            if (!$faceVerified) {
+                                $score = round($result['score'] * 100, 1);
+                                $errors[] = "Face verification failed! Face does not match stored ID. (Score: {$score}%, Required: 60%) [Engine: {$methodInfo['label']}]";
+                            }
                         }
 
                         // Clean up temp file
@@ -85,12 +128,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Audit log
                     logAuditEvent($pdo, AUDIT_LOGIN, ACTOR_VOTER, $user['id'], 'Voter login successful: ' . $user['email']);
 
-                    setFlashMessage('success', 'Welcome back, ' . $user['name'] . '!');
+                    if ($isFirstFaceEnrollment) {
+                        setFlashMessage('success', 'Face ID registered successfully. Welcome, ' . $user['name'] . '!');
+                    } else {
+                        setFlashMessage('success', 'Welcome back, ' . $user['name'] . '!');
+                    }
                     redirect(BASE_URL . '/pages/vote.php');
                 }
             } else {
                 logAuditEvent($pdo, AUDIT_LOGIN_FAIL, ACTOR_VOTER, null, 'Failed voter login attempt for email: ' . $email);
-                $errors[] = 'Invalid email or password';
+                if (!$hasAnyVoter) {
+                    $errors[] = 'No voter account exists yet. Please register first.';
+                } elseif (!$user) {
+                    $errors[] = 'No voter account found for this email. Please register first.';
+                } else {
+                    $errors[] = 'Invalid email or password';
+                }
             }
         }
     }

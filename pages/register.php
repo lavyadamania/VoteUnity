@@ -39,10 +39,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Passwords do not match';
     }
 
-    if (empty($faceData)) {
-        $errors[] = 'Face photo is required for registration';
-    }
-
     // Check if email or aadhaar already exists
     if (empty($errors)) {
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? OR aadhaar_number = ?");
@@ -54,7 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Process registration
     if (empty($errors)) {
-        // Save face image
+        // Save face image if captured during registration.
+        // If omitted, it will be auto-enrolled on first login.
         $faceImagePath = null;
         if ($faceData) {
             if ($isVercel) {

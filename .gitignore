@@ -41,3 +41,5 @@ Fix_*.bat
 # Word / PDF reports (large binary — regenerate via generate_report.py)
 *.docx
 *.pdf
+
+.env*.local

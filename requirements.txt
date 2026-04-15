@@ -1,5 +1,7 @@
 # Vercel Python Serverless Function Dependencies
-# Used by api/verify_face.py for ArcFace face verification
-onnxruntime==1.17.3
+# Used by api/verify_face.py for DeepFace verification
+deepface>=0.0.98
+opencv-python-headless>=4.11.0
 numpy>=1.24.0
 Pillow>=10.0.0
+tf-keras>=2.18.0

@@ -19,8 +19,8 @@ $stmt = $pdo->prepare("SELECT * FROM admins WHERE id = ?");
 $stmt->execute([$_SESSION['admin_id']]);
 $currentAdmin = $stmt->fetch();
 
-// Check if super admin or has manage_admins permission
-$canManage = $currentAdmin['is_super_admin'] || $currentAdmin['can_manage_admins'];
+// Only super admin can approve/reject/manage other admins.
+$canManage = (bool) ($currentAdmin['is_super_admin'] ?? false);
 
 if (!$canManage) {
     setFlashMessage('error', 'You do not have permission to manage admins.');
@@ -64,13 +64,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $canResetVotes = isset($_POST['can_reset_votes']) ? true : false;
                 $canManageAdmins = isset($_POST['can_manage_admins']) ? true : false;
 
-                $stmt = $pdo->prepare("UPDATE admins SET 
-                    can_view_votes = ?, 
-                    can_manage_candidates = ?, 
-                    can_reset_votes = ?, 
-                    can_manage_admins = ? 
+                $stmt = $pdo->prepare("UPDATE admins SET
+                    can_view_votes = " . ($canViewVotes ? 'TRUE' : 'FALSE') . ",
+                    can_manage_candidates = " . ($canManageCandidates ? 'TRUE' : 'FALSE') . ",
+                    can_reset_votes = " . ($canResetVotes ? 'TRUE' : 'FALSE') . ",
+                    can_manage_admins = " . ($canManageAdmins ? 'TRUE' : 'FALSE') . "
                     WHERE id = ? AND is_super_admin = FALSE");
-                $stmt->execute([$canViewVotes, $canManageCandidates, $canResetVotes, $canManageAdmins, $adminId]);
+                $stmt->execute([$adminId]);
                 $message = "Permissions updated successfully!";
                 $messageType = 'success';
                 break;

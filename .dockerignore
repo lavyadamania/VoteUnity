@@ -1,0 +1,11 @@
+.git
+.gitignore
+.venv
+node_modules
+vendor
+screenshots
+uploads
+*.log
+*.tmp
+.env.local
+.env

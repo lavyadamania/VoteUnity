@@ -6,6 +6,9 @@
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/functions.php';
 
+// Guard: require DB
+requireDb($pdo, $db_error ?? null);
+
 // Check if admin has pending location requirement
 if (!isset($_SESSION['admin_requires_location']) || !isset($_SESSION['admin_pending_login'])) {
     redirect(BASE_URL . '/pages/admin/login.php');
@@ -14,6 +17,22 @@ if (!isset($_SESSION['admin_requires_location']) || !isset($_SESSION['admin_pend
 $adminId = $_SESSION['admin_pending_login'];
 $adminUsername = $_SESSION['admin_pending_username'];
 $errors = [];
+
+// Detect optional admin_locations columns for backward compatibility.
+$locationColumns = [];
+if ($dbConnection === 'pgsql') {
+    $colStmt = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'admin_locations'");
+} else {
+    $colStmt = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'admin_locations'");
+}
+if ($colStmt) {
+    $locationColumns = $colStmt->fetchAll(PDO::FETCH_COLUMN);
+}
+
+$hasAccuracy = in_array('accuracy', $locationColumns, true);
+$hasIpAddress = in_array('ip_address', $locationColumns, true);
+$hasUserAgent = in_array('user_agent', $locationColumns, true);
+$hasAddress = in_array('address', $locationColumns, true);
 
 // Handle location submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -29,8 +48,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
 
         try {
-            $stmt = $pdo->prepare("INSERT INTO admin_locations (admin_id, latitude, longitude, accuracy, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$adminId, $latitude, $longitude, $accuracy, $ipAddress, $userAgent]);
+            $columns = ['admin_id', 'latitude', 'longitude'];
+            $values = [$adminId, $latitude, $longitude];
+
+            if ($hasAccuracy) {
+                $columns[] = 'accuracy';
+                $values[] = $accuracy;
+            }
+            if ($hasIpAddress) {
+                $columns[] = 'ip_address';
+                $values[] = $ipAddress;
+            }
+            if ($hasUserAgent) {
+                $columns[] = 'user_agent';
+                $values[] = $userAgent;
+            }
+            if ($hasAddress) {
+                $columns[] = 'address';
+                $values[] = $latitude . ', ' . $longitude;
+            }
+
+            $placeholders = implode(', ', array_fill(0, count($columns), '?'));
+            $sql = "INSERT INTO admin_locations (" . implode(', ', $columns) . ") VALUES (" . $placeholders . ")";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($values);
 
             // Complete login
             $_SESSION['admin_id'] = $adminId;

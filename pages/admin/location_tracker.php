@@ -22,20 +22,51 @@ $currentAdmin = $stmt->fetch();
 // Only super admin can view all locations
 $isSuperAdmin = $currentAdmin['is_super_admin'] ?? 0;
 
+// Detect optional admin_locations columns for backward compatibility.
+$locationColumns = [];
+if ($dbConnection === 'pgsql') {
+    $colStmt = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'admin_locations'");
+} else {
+    $colStmt = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'admin_locations'");
+}
+if ($colStmt) {
+    $locationColumns = $colStmt->fetchAll(PDO::FETCH_COLUMN);
+}
+
+$hasAccuracy = in_array('accuracy', $locationColumns, true);
+$hasIpAddress = in_array('ip_address', $locationColumns, true);
+$hasTrackedAt = in_array('tracked_at', $locationColumns, true);
+$hasLoginTime = in_array('login_time', $locationColumns, true);
+
+$innerAccuracy = $hasAccuracy ? 'accuracy' : 'NULL AS accuracy';
+$innerIpAddress = $hasIpAddress ? 'ip_address' : 'NULL AS ip_address';
+
+if ($hasTrackedAt) {
+    $innerTime = 'tracked_at AS tracked_at';
+    $latestCondition = 'tracked_at = (SELECT MAX(tracked_at) FROM admin_locations l2 WHERE l2.admin_id = l1.admin_id)';
+    $orderBy = 'l.tracked_at DESC';
+} elseif ($hasLoginTime) {
+    $innerTime = 'login_time AS tracked_at';
+    $latestCondition = 'login_time = (SELECT MAX(login_time) FROM admin_locations l2 WHERE l2.admin_id = l1.admin_id)';
+    $orderBy = 'l.tracked_at DESC';
+} else {
+    $innerTime = 'NULL AS tracked_at';
+    $latestCondition = 'id = (SELECT MAX(id) FROM admin_locations l2 WHERE l2.admin_id = l1.admin_id)';
+    $orderBy = 'a.id ASC';
+}
+
 // Get latest location for each admin
 $locations = $pdo->query("
     SELECT a.id, a.username, a.is_super_admin,
            l.latitude, l.longitude, l.accuracy, l.ip_address, l.tracked_at
     FROM admins a
     LEFT JOIN (
-        SELECT admin_id, latitude, longitude, accuracy, ip_address, tracked_at
+        SELECT admin_id, latitude, longitude, {$innerAccuracy}, {$innerIpAddress}, {$innerTime}
         FROM admin_locations l1
-        WHERE tracked_at = (
-            SELECT MAX(tracked_at) FROM admin_locations l2 WHERE l2.admin_id = l1.admin_id
-        )
+        WHERE {$latestCondition}
     ) l ON a.id = l.admin_id
     WHERE a.is_approved = TRUE OR a.is_super_admin = TRUE
-    ORDER BY l.tracked_at DESC
+    ORDER BY {$orderBy}
 ")->fetchAll();
 ?>
 <!DOCTYPE html>
