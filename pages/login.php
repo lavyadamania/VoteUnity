@@ -9,10 +9,15 @@ if (isLoggedIn()) {
 $errors = [];
 
 // First-run guard: if no voter exists, route user to registration instead of looping on login.
-$hasAnyVoter = (int) $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn() > 0;
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' && !$hasAnyVoter) {
-    setFlashMessage('error', 'No voter account exists yet. Please register first.');
-    redirect(BASE_URL . '/pages/register.php');
+try {
+    $hasAnyVoter = (int) $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn() > 0;
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' && !$hasAnyVoter) {
+        setFlashMessage('error', 'No voter account exists yet. Please register first.');
+        redirect(BASE_URL . '/pages/register.php');
+    }
+} catch (PDOException $e) {
+    $hasAnyVoter = false;
+    $errors[] = "Database connectivity issue. Please check your configuration.";
 }
 
 // Handle form submission
@@ -33,13 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
-        } catch (PDOException $e) {
-            $errors[] = 'Database error: ' . $e->getMessage();
-            $user = false;
-        }
 
-        // Only check login if database query succeeded
-        if ($user !== false) {
             if ($user && password_verify($password, $user['password'])) {
                 // Face verification with first-login auto enrollment
                 $faceVerified = $bypassFaceId; // Skip face verification if bypass is enabled
@@ -63,12 +62,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $user['face_image'] = $faceImagePath;
                 };
 
-                if (empty($faceData)) {
+                if (empty($faceData) && !$bypassFaceId) {
                     $errors[] = 'Face capture is required for login verification.';
                     $faceVerified = false;
                 }
 
-                if ($faceVerified && !$user['face_image']) {
+                if ($faceVerified && !$user['face_image'] && !empty($faceData)) {
                     $saveFaceTemplate($faceData);
                     $isFirstFaceEnrollment = true;
                 }
@@ -145,14 +144,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             } else {
                 logAuditEvent($pdo, AUDIT_LOGIN_FAIL, ACTOR_VOTER, null, 'Failed voter login attempt for email: ' . $email);
-                if (!$hasAnyVoter) {
-                    $errors[] = 'No voter account exists yet. Please register first.';
-                } elseif (!$user) {
+                if (!$user) {
                     $errors[] = 'No voter account found for this email. Please register first.';
                 } else {
                     $errors[] = 'Invalid email or password';
                 }
             }
+        } catch (PDOException $e) {
+            $errors[] = 'Database error: ' . $e->getMessage();
         }
     }
 }

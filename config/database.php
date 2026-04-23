@@ -68,7 +68,26 @@ if ($isVercel || $isPhpBuiltInServer) {
     define('BASE_URL', '');
 } else {
     // Local development (e.g., XAMPP subfolder)
-    define('BASE_URL', '/voting');
+    // Dynamically detect the base path by comparing project root with document root
+    $projectRoot = str_replace('\\', '/', dirname(__DIR__));
+    $docRoot = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? '');
+    
+    if (!empty($docRoot) && strpos($projectRoot, $docRoot) === 0) {
+        $baseUrl = substr($projectRoot, strlen($docRoot));
+        define('BASE_URL', rtrim($baseUrl, '/'));
+    } else {
+        // Fallback for CLI or cases where DOCUMENT_ROOT is not set correctly
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        $scriptDir = str_replace('\\', '/', dirname($scriptName));
+        $projectName = basename($projectRoot);
+        $pos = strpos($scriptDir, '/' . $projectName);
+        if ($pos !== false) {
+            $baseUrl = substr($scriptDir, 0, $pos + strlen($projectName) + 1);
+            define('BASE_URL', rtrim($baseUrl, '/'));
+        } else {
+            define('BASE_URL', '/voting');
+        }
+    }
 }
 
 // Setup connection based on environment variables
